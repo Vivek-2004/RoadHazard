@@ -1,5 +1,6 @@
 package com.drive.roadhazard.ui.presentation
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -21,7 +22,9 @@ fun MyApp(viewModel: MainViewModel) {
 
     Scaffold(containerColor = Color.LightGray) { innerPadding ->
         NavHost(
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
             navController = navController,
             startDestination = NavigationDestination.CONFIGURATION_SCREEN.name
         ) {
@@ -41,7 +44,6 @@ fun MyApp(viewModel: MainViewModel) {
             composable(route = NavigationDestination.MAIN_SCREEN.name) {
                 MainScreen(
                     currentLocation = viewModel.currentLocation,
-                    currentUser = viewModel.currentUser,
                     selectedVehicleType = viewModel.selectedVehicleType,
                     currentSpeed = viewModel.currentSpeed,
                     detectedEvents = viewModel.detectedEvents.toList(),
