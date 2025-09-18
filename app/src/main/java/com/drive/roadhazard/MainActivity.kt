@@ -41,19 +41,22 @@ class MainActivity : ComponentActivity() {
     private var currentSpeed = 0f
     private var selectedVehicleType by mutableStateOf(VehicleType.TWO_WHEELER)
     private var selectedOrientation by mutableStateOf(PhoneOrientation.MOUNTER)
-    private var isLoggedIn by mutableStateOf(false) // Changed back to false
+    private var isLoggedIn by mutableStateOf(true)
     private var currentUser by mutableStateOf("")
     private val detectedEvents = mutableListOf<RoadEvent>()
     private val mapEvents = mutableStateListOf<EventResponse>()
     private var pendingEvent by mutableStateOf<RoadEvent?>(null)
+    private var permissionsGranted by mutableStateOf(false)
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.values.all { it }
-        if (allGranted && isLoggedIn) {
-            startSensorCollection()
-        }
+        permissionsGranted = allGranted
+        startSensorCollection()
+//        if (allGranted && isLoggedIn) {
+//            startSensorCollection()
+//        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,23 +69,23 @@ class MainActivity : ComponentActivity() {
         // Initialize managers
         initializeManagers()
 
-        // Request permissions
+        // Request permissions first
         requestPermissions()
 
         setContent {
             RoadSurpTheme {
-                MainScreen()
-                startSensorCollection()
-//                if (isLoggedIn) {
-//                    MainScreen()
-//                    startSensorCollection()
-//                } else {
-//                    LoginScreen { username ->
-//                        currentUser = username
-//                        isLoggedIn = true
-//                        startSensorCollection()
-//                    }
-//                }
+                if (isLoggedIn) {
+                    MainScreen()
+                } else {
+                    LoginScreen { username ->
+                        currentUser = username
+                        isLoggedIn = true
+                        // Start sensor collection only if permissions are granted
+                        if (permissionsGranted) {
+                            startSensorCollection()
+                        }
+                    }
+                }
             }
         }
     }
@@ -97,7 +100,9 @@ class MainActivity : ComponentActivity() {
             currentSpeed = speed
 
             // Update sensor manager with current location and speed
-            sensorEventManager.updateLocationAndSpeed(location, speed)
+            if (::sensorEventManager.isInitialized) {
+                sensorEventManager.updateLocationAndSpeed(location, speed)
+            }
 
             // Fetch nearby events when location changes
             eventRepository.fetchNearbyEvents(
@@ -138,6 +143,10 @@ class MainActivity : ComponentActivity() {
                         selectedVehicleType,
                         selectedOrientation
                     )
+                    // Start sensor collection if not already started
+                    if (permissionsGranted) {
+                        startSensorCollection()
+                    }
                 }
             )
 
@@ -166,8 +175,7 @@ class MainActivity : ComponentActivity() {
         val permissions = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.INTERNET,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
+            Manifest.permission.INTERNET
         )
 
         val permissionsToRequest = permissions.filter { permission ->
@@ -176,10 +184,14 @@ class MainActivity : ComponentActivity() {
 
         if (permissionsToRequest.isNotEmpty()) {
             permissionLauncher.launch(permissionsToRequest.toTypedArray())
+        } else {
+            permissionsGranted = true
         }
     }
 
     private fun startSensorCollection() {
+        if (!permissionsGranted) return
+
         sensorEventManager.startSensorCollection(
             selectedVehicleType,
             selectedOrientation
@@ -205,8 +217,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        sensorEventManager.stopSensorCollection()
-        locationManager.stopLocationUpdates()
+        if (::sensorEventManager.isInitialized) {
+            sensorEventManager.stopSensorCollection()
+        }
+        if (::locationManager.isInitialized) {
+            locationManager.stopLocationUpdates()
+        }
         eventRepository.stopPeriodicUpload()
     }
 }

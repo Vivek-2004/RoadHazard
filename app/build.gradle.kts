@@ -89,6 +89,11 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // Google Play Services Location (for better location accuracy)
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+// HTTP client improvements
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 }
 
 //dependencies {
