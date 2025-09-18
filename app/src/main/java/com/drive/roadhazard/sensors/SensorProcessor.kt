@@ -1,5 +1,6 @@
 package com.drive.roadhazard.sensors
 
+import android.util.Log
 import com.drive.roadhazard.data.EventType
 import com.drive.roadhazard.data.VehicleType
 import kotlin.math.abs
@@ -12,6 +13,10 @@ class SensorProcessor {
     private val zAxisBuffer = mutableListOf<Float>()
     private val speedBuffer = mutableListOf<Float>()
     private var lastEventTime = 0L
+
+    companion object {
+        private const val TAG = "SensorProcessor"
+    }
 
     // Dynamic threshold calculation based on research
     fun calculateDynamicThreshold(speed: Float, vehicleType: VehicleType): Pair<Float, Float> {
@@ -27,14 +32,25 @@ class SensorProcessor {
             1f + (speed - 20f) * scalingFactor / 20f
         } else 1f
 
+        val dynamicSpeedBreakerThreshold = baseThresholds.first * speedFactor
+        val dynamicPotholeThreshold = baseThresholds.second * speedFactor
+
+        Log.d(
+            TAG,
+            "Dynamic Thresholds -> Speed: $speed km/h, Vehicle: $vehicleType, SB_Threshold: $dynamicSpeedBreakerThreshold, Pothole_Threshold: $dynamicPotholeThreshold"
+        )
+
         return Pair(
-            baseThresholds.first * speedFactor,
-            baseThresholds.second * speedFactor
+            dynamicSpeedBreakerThreshold,
+            dynamicPotholeThreshold
         )
     }
 
     // Auto-orientation based on research paper
     fun reorientAcceleration(ax: Float, ay: Float, az: Float): Triple<Float, Float, Float> {
+        // Log raw sensor data
+        Log.d(TAG, "Raw Accel -> X: $ax, Y: $ay, Z: $az")
+
         // Apply low-pass filter
         val alpha = 0.8f
         val filteredAx = ax * alpha
@@ -54,6 +70,9 @@ class SensorProcessor {
         val reorientedX = ax * cosRoll + ay * sinRoll * sinPitch + az * cosRoll * sinPitch
         val reorientedY = ay * cosPitch - az * sinPitch
         val reorientedZ = -ax * sinRoll + ay * cosRoll * sinPitch + az * cosRoll * cosPitch
+
+        // Log reoriented sensor data
+        Log.d(TAG, "Reoriented Accel -> X: $reorientedX, Y: $reorientedY, Z: $reorientedZ")
 
         return Triple(reorientedX, reorientedY, reorientedZ)
     }
@@ -86,14 +105,25 @@ class SensorProcessor {
         val minZ = zAxisBuffer.minOrNull() ?: 0f
         val avgSpeed = speedBuffer.average().toFloat()
 
+        // Log buffer values for analysis
+        Log.d(TAG, "Buffer Stats -> MaxZ: $maxZ, MinZ: $minZ, AvgSpeed: $avgSpeed")
+
         // Speed breaker detection (positive peak followed by negative)
         if (maxZ > speedBreakerThreshold && minZ < -speedBreakerThreshold * 0.5f) {
+            Log.d(
+                TAG,
+                "EVENT DETECTED: SPEED_BREAKER -> Condition met: maxZ ($maxZ) > SB_Threshold ($speedBreakerThreshold) AND minZ ($minZ) < -SB_Threshold*0.5"
+            )
             lastEventTime = timestamp
             return EventType.SPEED_BREAKER
         }
 
         // Pothole detection (negative peak)
         if (minZ < -potholeThreshold && avgSpeed > 10f) {
+            Log.d(
+                TAG,
+                "EVENT DETECTED: POTHOLE -> Condition met: minZ ($minZ) < -Pothole_Threshold ($-potholeThreshold) AND avgSpeed ($avgSpeed) > 10"
+            )
             lastEventTime = timestamp
             return EventType.POTHOLE
         }
@@ -106,6 +136,12 @@ class SensorProcessor {
         }
 
         if (speedVariation > 15f && avgSpeed < 20f && abs(zAccel) > 0.8f) {
+            Log.d(
+                TAG,
+                "EVENT DETECTED: BROKEN_PATCH -> Condition met: speedVariation ($speedVariation) > 15 AND avgSpeed ($avgSpeed) < 20 AND abs(zAccel) (${
+                    abs(zAccel)
+                }) > 0.8"
+            )
             lastEventTime = timestamp
             return EventType.BROKEN_PATCH
         }
