@@ -16,6 +16,20 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import android.location.LocationManager as AndroidLocationManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlin.random.Random
+
+// --- START: Global state for simulation coordination ---
+// This allows SensorEventManager to tell LocationManager to slow down
+object SimulationState {
+    val isEventIncoming = MutableStateFlow(false)
+}
+// --- END: Global state ---
+
 
 class LocationManager(
     private val context: Context,
@@ -29,19 +43,24 @@ class LocationManager(
         private const val MIN_DISTANCE = 5f // 5 meters
     }
 
+    // --- START: Simulation variables ---
+    private val isSimulationMode = true // Set to true to enable fake data
+    // --- END: Simulation variables ---
+
     // Use Google Play Services Location API (more accurate)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
     private var locationCallback: LocationCallback? = null
 
     // Fallback to system LocationManager
-    private val systemLocationManager =
-        context.getSystemService(Context.LOCATION_SERVICE) as AndroidLocationManager
+    private val systemLocationManager = context.getSystemService(Context.LOCATION_SERVICE) as AndroidLocationManager
     private var currentLocation: Location? = null
     private var isLocationUpdatesActive = false
 
     init {
-        initializeGooglePlayServices()
+        if (!isSimulationMode) {
+            initializeGooglePlayServices()
+        }
     }
 
     private fun initializeGooglePlayServices() {
@@ -72,6 +91,39 @@ class LocationManager(
     }
 
     fun startLocationUpdates() {
+        // --- START: Simulation logic ---
+        if (isSimulationMode) {
+            Log.d(TAG, "Starting realistic location simulation")
+            isLocationUpdatesActive = true
+            CoroutineScope(Dispatchers.Default).launch {
+                var currentSpeed = 45.0f // Start at a normal speed
+
+                while (isLocationUpdatesActive) {
+                    // Check if an event is about to be simulated
+                    if (SimulationState.isEventIncoming.value) {
+                        // Driver hits the brakes!
+                        Log.d(TAG, "Event incoming! Simulating braking.")
+                        currentSpeed = Random.nextDouble(15.0, 25.0).toFloat()
+                        SimulationState.isEventIncoming.value = false // Reset the flag
+                    } else {
+                        // Normal driving: Speed fluctuates slightly
+                        val speedChange = Random.nextDouble(-5.0, 5.0).toFloat()
+                        currentSpeed = (currentSpeed + speedChange).coerceIn(20f, 55f)
+                    }
+
+                    val fakeLocation = Location("fused")
+                    fakeLocation.latitude = 23.5486
+                    fakeLocation.longitude = 87.2998
+
+                    Log.d(TAG, "Simulating location update. Speed: $currentSpeed km/h")
+                    onLocationUpdate(fakeLocation, currentSpeed)
+                    delay(LOCATION_REQUEST_INTERVAL)
+                }
+            }
+            return
+        }
+        // --- END: Simulation logic ---
+
         if (isLocationUpdatesActive) {
             Log.d(TAG, "Location updates already active")
             return
@@ -238,6 +290,12 @@ class LocationManager(
 
         Log.d(TAG, "Stopping location updates")
 
+        isLocationUpdatesActive = false
+
+        if (isSimulationMode) {
+            return
+        }
+
         try {
             // Stop Google Play Services location updates
             if (::fusedLocationClient.isInitialized && locationCallback != null) {
@@ -247,7 +305,7 @@ class LocationManager(
             // Stop system location manager updates
             systemLocationManager.removeUpdates(systemLocationListener)
 
-            isLocationUpdatesActive = false
+
             Log.d(TAG, "Location updates stopped successfully")
 
         } catch (e: SecurityException) {
