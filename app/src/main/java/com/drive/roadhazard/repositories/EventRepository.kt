@@ -6,7 +6,7 @@ import android.util.Log
 import com.drive.roadhazard.data.EventResponse
 import com.drive.roadhazard.data.EventUpload
 import com.drive.roadhazard.data.RoadEvent
-import com.drive.roadhazard.network.RoadSurpAPI
+import com.drive.roadhazard.network.RoadHazardAPI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -53,7 +53,7 @@ class EventRepository {
             .build()
     }
 
-    private val api by lazy { retrofit.create(RoadSurpAPI::class.java) }
+    private val api by lazy { retrofit.create(RoadHazardAPI::class.java) }
 
     // Periodic upload handling
     private val handler = Handler(Looper.getMainLooper())

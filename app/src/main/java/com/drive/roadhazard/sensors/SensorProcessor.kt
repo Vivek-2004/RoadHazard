@@ -24,7 +24,6 @@ class SensorProcessor {
             VehicleType.TWO_WHEELER -> Pair(1.8f, 0.714f) // speed breaker, pothole
             VehicleType.THREE_WHEELER -> Pair(1.47f, 0.612f)
             VehicleType.FOUR_WHEELER -> Pair(1.08f, 0.41f)
-            VehicleType.BUS -> Pair(1.08f, 0.41f)
         }
 
         val speedFactor = if (speed > 20f) {

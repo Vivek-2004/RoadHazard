@@ -30,5 +30,5 @@ data class EventResponse(
 )
 
 enum class EventType { SPEED_BREAKER, POTHOLE, BROKEN_PATCH }
-enum class VehicleType { TWO_WHEELER, THREE_WHEELER, FOUR_WHEELER, BUS }
+enum class VehicleType { TWO_WHEELER, THREE_WHEELER, FOUR_WHEELER }
 enum class PhoneOrientation { POCKET, MOUNTER, DASHBOARD }
