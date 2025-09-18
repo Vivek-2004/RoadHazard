@@ -7,6 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
 import android.util.Log
+import com.drive.roadhazard.Config
 import com.drive.roadhazard.data.PhoneOrientation
 import com.drive.roadhazard.data.RoadEvent
 import com.drive.roadhazard.data.VehicleType
@@ -33,10 +34,6 @@ class SensorEventManager(
     private var selectedVehicleType = VehicleType.TWO_WHEELER
     private var selectedOrientation = PhoneOrientation.MOUNTER
 
-    // --- START: Simulation variables ---
-    private val isSimulationMode = true // Set to true to enable fake data
-    // --- END: Simulation variables ---
-
     init {
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
@@ -50,7 +47,7 @@ class SensorEventManager(
         selectedOrientation = orientation
 
         // --- START: Simulation logic ---
-        if (isSimulationMode) {
+        if (Config.IS_SIMULATION_MODE) {
             // Start a coroutine to generate fake data
             CoroutineScope(Dispatchers.Default).launch {
                 while (true) {
@@ -108,7 +105,7 @@ class SensorEventManager(
     // --- END: New simulation functions ---
 
     fun stopSensorCollection() {
-        if (!isSimulationMode) {
+        if (!Config.IS_SIMULATION_MODE) {
             sensorManager.unregisterListener(this)
         }
     }
@@ -122,6 +119,8 @@ class SensorEventManager(
         currentLocation = location
         currentSpeed = speed
     }
+
+
 
     override fun onSensorChanged(event: SensorEvent?) {
         event ?: return

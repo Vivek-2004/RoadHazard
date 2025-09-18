@@ -8,6 +8,7 @@ import android.location.LocationListener
 import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.drive.roadhazard.Config
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
 import com.google.android.gms.location.LocationCallback
@@ -15,13 +16,13 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import android.location.LocationManager as AndroidLocationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlin.random.Random
+import android.location.LocationManager as AndroidLocationManager
 
 // --- START: Global state for simulation coordination ---
 // This allows SensorEventManager to tell LocationManager to slow down
@@ -43,22 +44,20 @@ class LocationManager(
         private const val MIN_DISTANCE = 5f // 5 meters
     }
 
-    // --- START: Simulation variables ---
-    private val isSimulationMode = true // Set to true to enable fake data
-    // --- END: Simulation variables ---
-
     // Use Google Play Services Location API (more accurate)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
     private var locationCallback: LocationCallback? = null
 
     // Fallback to system LocationManager
-    private val systemLocationManager = context.getSystemService(Context.LOCATION_SERVICE) as AndroidLocationManager
+    private val systemLocationManager =
+        context.getSystemService(Context.LOCATION_SERVICE) as AndroidLocationManager
     private var currentLocation: Location? = null
     private var isLocationUpdatesActive = false
 
     init {
-        if (!isSimulationMode) {
+        // We only initialize the real location services if not in simulation mode
+        if (!Config.IS_SIMULATION_MODE) {
             initializeGooglePlayServices()
         }
     }
@@ -92,7 +91,7 @@ class LocationManager(
 
     fun startLocationUpdates() {
         // --- START: Simulation logic ---
-        if (isSimulationMode) {
+        if (Config.IS_SIMULATION_MODE) {
             Log.d(TAG, "Starting realistic location simulation")
             isLocationUpdatesActive = true
             CoroutineScope(Dispatchers.Default).launch {
@@ -292,7 +291,7 @@ class LocationManager(
 
         isLocationUpdatesActive = false
 
-        if (isSimulationMode) {
+        if (Config.IS_SIMULATION_MODE) {
             return
         }
 
