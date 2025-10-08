@@ -1,6 +1,7 @@
 package com.drive.roadhazard
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
@@ -11,7 +12,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
-import com.drive.roadhazard.ui.presentation.LoginScreen
 import com.drive.roadhazard.ui.presentation.MyApp
 import com.drive.roadhazard.ui.theme.RoadHazardTheme
 import com.drive.roadhazard.viewmodels.MainViewModel
@@ -34,15 +34,28 @@ class MainActivity : ComponentActivity() {
 
         requestPermissions()
 
+        val sharedPref = getSharedPreferences("Road", Context.MODE_PRIVATE)
+        val prefEditor = sharedPref.edit()
+
+        if (!sharedPref.contains("isLoggedIn")) {
+            prefEditor.putBoolean("isLoggedIn", false)
+            prefEditor.apply()
+        }
+
         setContent {
             RoadHazardTheme {
-                if (viewModel.isLoggedIn) {
-                    MyApp(viewModel = viewModel)
-                } else {
-                    LoginScreen { username ->
-                        viewModel.onLoginSuccess(username)
-                    }
-                }
+                MyApp(viewModel = viewModel)
+//                val isLoggedIn by remember { mutableStateOf(sharedPref.getBoolean("isLoggedIn",false)) }
+//                if(isLoggedIn) {
+//                    MyApp(viewModel = viewModel)
+//                } else {
+//                    LoginScreen(
+//                        prefEditor = prefEditor,
+//                        onLoginSuccess = { username ->
+//                            viewModel.onLoginSuccess(username)
+//                        }
+//                    )
+//                }
             }
         }
     }

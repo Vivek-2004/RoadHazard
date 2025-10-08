@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.drive.roadhazard" />
+                  <option name="mobileSdkAppId" value="1:196819919329:android:9b4c31c419ea3b046532a0" />
+                  <option name="projectId" value="roadhazard2025" />
+                  <option name="projectNumber" value="196819919329" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

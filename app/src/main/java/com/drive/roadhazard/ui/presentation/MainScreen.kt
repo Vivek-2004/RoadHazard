@@ -1,10 +1,14 @@
 package com.drive.roadhazard.ui.presentation
 
 import android.location.Location
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -19,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -37,7 +42,8 @@ fun MainScreen(
     selectedVehicleType: VehicleType,
     currentSpeed: Float,
     detectedEvents: List<RoadEvent>,
-    mapEvents: List<EventResponse>
+    mapEvents: List<EventResponse>,
+    onStopClick: () -> Unit
 ) {
     var mapCenterTarget by remember { mutableStateOf<GeoPoint?>(null) }
 
@@ -88,29 +94,80 @@ fun MainScreen(
                     myLocationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                     myLocationMarker.icon = mapView.context.getDrawable(R.drawable.location)
                     mapView.overlays.add(myLocationMarker)
-                    mapView.controller.setZoom(15.0)
+                    mapView.controller.setZoom(19.0)
                     mapView.controller.setCenter(geoPoint)
                 }
                 mapView.invalidate()
             }
         )
 
-        FloatingActionButton(
+        Row(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(vertical = 32.dp, horizontal = 24.dp),
-            onClick = {
-                currentLocation?.let {
-                    mapCenterTarget = GeoPoint(it.latitude, it.longitude)
-                }
-            }
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            Icon(
-                painter = painterResource(R.drawable.location),
-                contentDescription = "Current Location"
-            )
+            FloatingActionButton(
+                modifier = Modifier
+                    .padding(vertical = 18.dp, horizontal = 10.dp)
+                    .weight(0.75f),
+                containerColor = Color.Red,
+                onClick = {
+                    onStopClick()
+                }
+            ) {
+                Text(
+                    text = "S T O P",
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            FloatingActionButton(
+                modifier = Modifier
+                    .padding(vertical = 18.dp, horizontal = 10.dp)
+                    .weight(0.25f),
+                onClick = {
+                    currentLocation?.let {
+                        mapCenterTarget = GeoPoint(it.latitude, it.longitude)
+                    }
+                }
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.location),
+                    contentDescription = "Current Location"
+                )
+            }
         }
 
+        FloatingActionButton(
+            onClick = {},
+            shape = CircleShape,
+            modifier = Modifier
+                .padding(bottom = 82.dp, end = 12.dp)
+                .align(Alignment.BottomEnd)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = currentSpeed.toInt().toString(),
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = "km/h",
+                    fontSize = 12.sp,
+                    color = Color.LightGray
+                )
+            }
+        }
+
+        // Details
         Card(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -124,11 +181,6 @@ fun MainScreen(
             ) {
                 Text(
                     text = "Vehicle: ${selectedVehicleType.name}",
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Speed: ${currentSpeed.toInt()} km/h",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )

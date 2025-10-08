@@ -108,6 +108,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun stopSensorCollections() {
+        sensorEventManager.stopSensorCollection()
+        locationManager.stopLocationUpdates()
+        eventRepository.stopPeriodicUpload()
+    }
+
     override fun onCleared() {
         super.onCleared()
         sensorEventManager.stopSensorCollection()

@@ -1,5 +1,6 @@
 package com.drive.roadhazard.ui.presentation
 
+import android.content.SharedPreferences
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun LoginScreen(onLoginSuccess: (String) -> Unit) {
+fun LoginScreen(
+    onLoginSuccess: (String) -> Unit,
+    prefEditor: SharedPreferences.Editor
+) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isRegistering by remember { mutableStateOf(false) }
@@ -66,9 +70,13 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
 
         Button(
             onClick = {
-                if (username.isNotBlank() && password.isNotBlank()) {
-                    onLoginSuccess(username)
-                }
+                onLoginSuccess("jsbdvsv")
+                prefEditor.putBoolean("isLoggedIn", true)
+                prefEditor.putString("jwt", username)
+                prefEditor.apply()
+//                if (username.isNotBlank() && password.isNotBlank()) {
+//                    onLoginSuccess(username)
+//                }
             },
             modifier = Modifier
                 .fillMaxWidth()

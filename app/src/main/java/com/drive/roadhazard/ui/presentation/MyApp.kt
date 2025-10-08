@@ -47,7 +47,10 @@ fun MyApp(viewModel: MainViewModel) {
                     selectedVehicleType = viewModel.selectedVehicleType,
                     currentSpeed = viewModel.currentSpeed,
                     detectedEvents = viewModel.detectedEvents.toList(),
-                    mapEvents = viewModel.mapEvents.toList()
+                    mapEvents = viewModel.mapEvents.toList(),
+                    onStopClick = {
+                        viewModel.stopSensorCollections()
+                    }
                 )
             }
         }
