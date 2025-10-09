@@ -27,8 +27,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (String) -> Unit,
-    prefEditor: SharedPreferences.Editor
+    onLoginSuccess: (String) -> Unit
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -70,10 +69,7 @@ fun LoginScreen(
 
         Button(
             onClick = {
-                onLoginSuccess("jsbdvsv")
-                prefEditor.putBoolean("isLoggedIn", true)
-                prefEditor.putString("jwt", username)
-                prefEditor.apply()
+                onLoginSuccess("jwt")
 //                if (username.isNotBlank() && password.isNotBlank()) {
 //                    onLoginSuccess(username)
 //                }

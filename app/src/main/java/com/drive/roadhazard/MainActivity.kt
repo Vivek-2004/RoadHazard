@@ -11,7 +11,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import com.drive.roadhazard.ui.presentation.LoginScreen
 import com.drive.roadhazard.ui.presentation.MyApp
 import com.drive.roadhazard.ui.theme.RoadHazardTheme
 import com.drive.roadhazard.viewmodels.MainViewModel
@@ -44,18 +49,30 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             RoadHazardTheme {
-                MyApp(viewModel = viewModel)
-//                val isLoggedIn by remember { mutableStateOf(sharedPref.getBoolean("isLoggedIn",false)) }
-//                if(isLoggedIn) {
-//                    MyApp(viewModel = viewModel)
-//                } else {
-//                    LoginScreen(
-//                        prefEditor = prefEditor,
-//                        onLoginSuccess = { username ->
-//                            viewModel.onLoginSuccess(username)
-//                        }
-//                    )
-//                }
+                var isLoggedIn by remember {
+                    mutableStateOf(
+                        sharedPref.getBoolean(
+                            "isLoggedIn",
+                            false
+                        )
+                    )
+                }
+                if (isLoggedIn) {
+                    val _jwt: String? = sharedPref.getString("jwt", null)
+                    if (!_jwt.isNullOrBlank()) {
+                        viewModel.onLoginSuccess(_jwt)
+                    }
+                    MyApp(viewModel = viewModel)
+                } else {
+                    LoginScreen(
+                        onLoginSuccess = { jwt ->
+                            prefEditor.putBoolean("isLoggedIn", true)
+                            prefEditor.putString("jwt", jwt)
+                            prefEditor.apply()
+                            isLoggedIn = true
+                        }
+                    )
+                }
             }
         }
     }

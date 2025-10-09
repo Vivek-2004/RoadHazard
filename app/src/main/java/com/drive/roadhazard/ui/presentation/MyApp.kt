@@ -2,7 +2,10 @@ package com.drive.roadhazard.ui.presentation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -13,6 +16,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.drive.roadhazard.viewmodels.MainViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyApp(viewModel: MainViewModel) {
 
@@ -20,7 +24,16 @@ fun MyApp(viewModel: MainViewModel) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     // var currentScreen = currentBackStackEntry?.destination?.route
 
-    Scaffold(containerColor = Color.LightGray) { innerPadding ->
+    Scaffold(
+        containerColor = Color.LightGray,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text("RoadHazard")
+                }
+            )
+        }
+    ) { innerPadding ->
         NavHost(
             modifier = Modifier
                 .padding(innerPadding)

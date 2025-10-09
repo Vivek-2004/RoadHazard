@@ -30,7 +30,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var selectedVehicleType by mutableStateOf(VehicleType.TWO_WHEELER)
     var selectedOrientation by mutableStateOf(PhoneOrientation.MOUNTER)
     var isLoggedIn by mutableStateOf(true)
-    var currentUser by mutableStateOf("")
+    var jwt by mutableStateOf("")
     val detectedEvents = mutableListOf<RoadEvent>()
     val mapEvents = mutableStateListOf<EventResponse>()
     var pendingEvent by mutableStateOf<RoadEvent?>(null)
@@ -49,8 +49,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onLoginSuccess(username: String) {
-        currentUser = username
+    fun onLoginSuccess(_jwt: String) {
+        jwt = _jwt
         isLoggedIn = true
         if (permissionsGranted) {
             startSensorCollection()
@@ -119,5 +119,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sensorEventManager.stopSensorCollection()
         locationManager.stopLocationUpdates()
         eventRepository.stopPeriodicUpload()
+    }
+
+    fun signInAPI() {
+        viewModelScope.launch {
+
+        }
     }
 }

@@ -8,7 +8,6 @@ import android.location.LocationListener
 import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.drive.roadhazard.Config
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
 import com.google.android.gms.location.LocationCallback
@@ -16,21 +15,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
-import kotlin.random.Random
 import android.location.LocationManager as AndroidLocationManager
-
-// --- START: Global state for simulation coordination ---
-// This allows SensorEventManager to tell LocationManager to slow down
-object SimulationState {
-    val isEventIncoming = MutableStateFlow(false)
-}
-// --- END: Global state ---
-
 
 class LocationManager(
     private val context: Context,
@@ -56,10 +41,7 @@ class LocationManager(
     private var isLocationUpdatesActive = false
 
     init {
-        // We only initialize the real location services if not in simulation mode
-        if (!Config.IS_SIMULATION_MODE) {
-            initializeGooglePlayServices()
-        }
+        initializeGooglePlayServices()
     }
 
     private fun initializeGooglePlayServices() {
@@ -90,39 +72,6 @@ class LocationManager(
     }
 
     fun startLocationUpdates() {
-        // --- START: Simulation logic ---
-        if (Config.IS_SIMULATION_MODE) {
-            Log.d(TAG, "Starting realistic location simulation")
-            isLocationUpdatesActive = true
-            CoroutineScope(Dispatchers.Default).launch {
-                var currentSpeed = 45.0f // Start at a normal speed
-
-                while (isLocationUpdatesActive) {
-                    // Check if an event is about to be simulated
-                    if (SimulationState.isEventIncoming.value) {
-                        // Driver hits the brakes!
-                        Log.d(TAG, "Event incoming! Simulating braking.")
-                        currentSpeed = Random.nextDouble(15.0, 25.0).toFloat()
-                        SimulationState.isEventIncoming.value = false // Reset the flag
-                    } else {
-                        // Normal driving: Speed fluctuates slightly
-                        val speedChange = Random.nextDouble(-5.0, 5.0).toFloat()
-                        currentSpeed = (currentSpeed + speedChange).coerceIn(20f, 55f)
-                    }
-
-                    val fakeLocation = Location("fused")
-                    fakeLocation.latitude = 23.5486
-                    fakeLocation.longitude = 87.2998
-
-                    Log.d(TAG, "Simulating location update. Speed: $currentSpeed km/h")
-                    onLocationUpdate(fakeLocation, currentSpeed)
-                    delay(LOCATION_REQUEST_INTERVAL)
-                }
-            }
-            return
-        }
-        // --- END: Simulation logic ---
-
         if (isLocationUpdatesActive) {
             Log.d(TAG, "Location updates already active")
             return
@@ -290,10 +239,6 @@ class LocationManager(
         Log.d(TAG, "Stopping location updates")
 
         isLocationUpdatesActive = false
-
-        if (Config.IS_SIMULATION_MODE) {
-            return
-        }
 
         try {
             // Stop Google Play Services location updates

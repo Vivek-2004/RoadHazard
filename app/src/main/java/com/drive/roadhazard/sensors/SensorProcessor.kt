@@ -114,8 +114,8 @@ class SensorProcessor {
                 "EVENT DETECTED: SPEED_BREAKER -> Condition met: maxZ ($maxZ) > SB_Threshold ($speedBreakerThreshold) AND minZ ($minZ) < -SB_Threshold*0.5"
             )
             lastEventTime = timestamp
-            zAxisBuffer.clear() // <<<--- FIX ADDED HERE
-            speedBuffer.clear() // <<<--- FIX ADDED HERE
+            zAxisBuffer.clear()
+            speedBuffer.clear()
             return EventType.SPEED_BREAKER
         }
 
@@ -126,8 +126,8 @@ class SensorProcessor {
                 "EVENT DETECTED: POTHOLE -> Condition met: minZ ($minZ) < -Pothole_Threshold ($-potholeThreshold) AND avgSpeed ($avgSpeed) > 10"
             )
             lastEventTime = timestamp
-            zAxisBuffer.clear() // <<<--- FIX ADDED HERE
-            speedBuffer.clear() // <<<--- FIX ADDED HERE
+            zAxisBuffer.clear()
+            speedBuffer.clear()
             return EventType.POTHOLE
         }
 
@@ -146,8 +146,8 @@ class SensorProcessor {
                 }) > 0.8"
             )
             lastEventTime = timestamp
-            zAxisBuffer.clear() // <<<--- FIX ADDED HERE
-            speedBuffer.clear() // <<<--- FIX ADDED HERE
+            zAxisBuffer.clear()
+            speedBuffer.clear()
             return EventType.BROKEN_PATCH
         }
 
