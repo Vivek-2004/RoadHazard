@@ -2,11 +2,6 @@ package com.drive.roadhazard.data
 
 import java.util.UUID
 
-data class User(
-    val username: String,
-    val password: String
-)
-
 data class RoadEvent(
     val id: String = UUID.randomUUID().toString(),
     val type: EventType,

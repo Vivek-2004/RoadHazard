@@ -25,10 +25,11 @@ fun MyApp(viewModel: MainViewModel) {
     // var currentScreen = currentBackStackEntry?.destination?.route
 
     Scaffold(
-        containerColor = Color.LightGray,
+        containerColor = Color.White,
+
         topBar = {
             TopAppBar(
-                modifier = Modifier.background(Color.LightGray),
+                modifier = Modifier.background(Color.White),
                 title = {
                     Text("RoadHazard")
                 }
@@ -57,6 +58,7 @@ fun MyApp(viewModel: MainViewModel) {
 
             composable(route = NavigationDestination.MAIN_SCREEN.name) {
                 MainScreen(
+                    navController = navController,
                     currentLocation = viewModel.currentLocation,
                     selectedVehicleType = viewModel.selectedVehicleType,
                     currentSpeed = viewModel.currentSpeed,
@@ -67,6 +69,13 @@ fun MyApp(viewModel: MainViewModel) {
                     }
                 )
             }
+
+            composable(route = NavigationDestination.DETAILS_SCREEN.name) {
+                DetailsScreen(
+                    eventsList = viewModel.detectedEvents.toList()
+                )
+            }
+
         }
     }
 

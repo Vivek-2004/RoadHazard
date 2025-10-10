@@ -1,6 +1,7 @@
 package com.drive.roadhazard.ui.presentation
 
 import android.location.Location
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.navigation.NavController
 import com.drive.roadhazard.R
 import com.drive.roadhazard.data.EventResponse
 import com.drive.roadhazard.data.RoadEvent
@@ -38,6 +40,7 @@ import org.osmdroid.views.overlay.Marker
 
 @Composable
 fun MainScreen(
+    navController: NavController,
     currentLocation: Location?,
     selectedVehicleType: VehicleType,
     currentSpeed: Float,
@@ -118,7 +121,7 @@ fun MainScreen(
                 }
             ) {
                 Text(
-                    text = "S T O P",
+                    text = "S  T  O  P",
                     fontSize = 18.sp,
                     color = Color.White,
                     fontWeight = FontWeight.Black
@@ -171,7 +174,12 @@ fun MainScreen(
         Card(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(16.dp),
+                .padding(16.dp)
+                .clickable(
+                    onClick = {
+                        navController.navigate(NavigationDestination.DETAILS_SCREEN.name)
+                    }
+                ),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White.copy(alpha = 0.9f)
             )
@@ -196,5 +204,6 @@ fun MainScreen(
                 )
             }
         }
+
     }
 }

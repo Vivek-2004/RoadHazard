@@ -2,7 +2,6 @@ package com.drive.roadhazard.viewmodels
 
 import android.app.Application
 import android.location.Location
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,7 +44,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             currentLocation = location
             currentSpeed = speed
             sensorEventManager.updateLocationAndSpeed(location, speed)
-            fetchNearbyEvents(location)
         }
 
         sensorEventManager = SensorEventManager(application) { roadEvent ->
@@ -65,7 +63,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun reportNewHazard(latitude: Double, longitude: Double, type: String, description: String? = null) {
+    fun reportNewHazard(
+        latitude: Double,
+        longitude: Double,
+        type: String,
+        description: String? = null
+    ) {
         viewModelScope.launch {
             eventRepository.reportHazard(jwt, latitude, longitude, type, description)
         }
@@ -99,16 +102,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         locationManager.startLocationUpdates()
     }
 
-    private fun fetchNearbyEvents(location: Location) {
-        viewModelScope.launch {
-            eventRepository.fetchNearbyEvents(
-                location.latitude,
-                location.longitude
-            ) { events ->
-                mapEvents.clear()
-                mapEvents.addAll(events)
-            }
-        }
+    fun stopSensorCollections() {
+        sensorEventManager.stopSensorCollection()
+        locationManager.stopLocationUpdates()
     }
 
     fun confirmEvent(confirm: Boolean) {
@@ -123,17 +119,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun stopSensorCollections() {
-        sensorEventManager.stopSensorCollection()
-        locationManager.stopLocationUpdates()
-        eventRepository.stopPeriodicUpload()
-    }
-
     override fun onCleared() {
         super.onCleared()
         sensorEventManager.stopSensorCollection()
         locationManager.stopLocationUpdates()
-        eventRepository.stopPeriodicUpload()
     }
 
 }

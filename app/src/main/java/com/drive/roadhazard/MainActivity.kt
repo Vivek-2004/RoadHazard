@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             RoadHazardTheme {
                 var isLoggedIn by remember {
-                    mutableStateOf(sharedPref.getBoolean("isLoggedIn",false))
+                    mutableStateOf(sharedPref.getBoolean("isLoggedIn", false))
                 }
 
                 if (isLoggedIn) {
