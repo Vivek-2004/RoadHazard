@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
                     MyApp(viewModel = viewModel)
                 } else {
                     LoginScreen(
+                        viewModel = viewModel,
                         onLoginSuccess = { jwt ->
                             prefEditor.putBoolean("isLoggedIn", true)
                             prefEditor.putString("jwt", jwt)

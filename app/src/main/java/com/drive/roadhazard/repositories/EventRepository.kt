@@ -5,6 +5,9 @@ import android.os.Looper
 import android.util.Log
 import com.drive.roadhazard.data.EventResponse
 import com.drive.roadhazard.data.EventUpload
+import com.drive.roadhazard.data.LoginRequest
+import com.drive.roadhazard.data.NewHazardRequest
+import com.drive.roadhazard.data.RegisterRequest
 import com.drive.roadhazard.data.RoadEvent
 import com.drive.roadhazard.network.RoadHazardAPI
 import kotlinx.coroutines.CoroutineScope
@@ -21,11 +24,7 @@ class EventRepository {
 
     companion object {
         private const val TAG = "EventRepository"
-
-        // Replace with your actual backend URL
-        private const val BASE_URL =
-            "http://192.168.1.100:8080/api/" // Use your local IP for testing
-        // For production: private const val BASE_URL = "https://your-actual-domain.com/api/"
+        private const val BASE_URL = "https://roadmap-x7c3.onrender.com"
     }
 
     // Enhanced HTTP Client with logging
@@ -43,8 +42,6 @@ class EventRepository {
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
-
-    // API Setup with proper error handling
     private val retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
@@ -118,22 +115,22 @@ class EventRepository {
         radius: Double = 5.0,
         onResult: (List<EventResponse>) -> Unit
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                Log.d(TAG, "Fetching nearby events for location: $lat, $lng")
-                val events = api.getNearbyEvents(lat, lng, radius)
-
-                withContext(Dispatchers.Main) {
-                    Log.d(TAG, "Fetched ${events.size} nearby events")
-                    onResult(events)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to fetch nearby events: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    onResult(emptyList())
-                }
-            }
-        }
+//        CoroutineScope(Dispatchers.IO).launch {
+//            try {
+//                Log.d(TAG, "Fetching nearby events for location: $lat, $lng")
+//                val events = api.getNearbyEvents(lat, lng, radius)
+//
+//                withContext(Dispatchers.Main) {
+//                    Log.d(TAG, "Fetched ${events.size} nearby events")
+//                    onResult(events)
+//                }
+//            } catch (e: Exception) {
+//                Log.e(TAG, "Failed to fetch nearby events: ${e.message}", e)
+//                withContext(Dispatchers.Main) {
+//                    onResult(emptyList())
+//                }
+//            }
+//        }
     }
 
     // Manual upload method for immediate uploads
@@ -175,6 +172,47 @@ class EventRepository {
                     onResult(false)
                 }
             }
+        }
+    }
+
+    suspend fun signUp(email: String, password: String, name: String, phoneNumber: String): Boolean {
+        val request = RegisterRequest(email, password, name, phoneNumber)
+        try {
+            val response = api.signUp(request)
+            Log.d(TAG, response.toString())
+            if (response.isSuccessful) {
+                return true
+            }
+        } catch(e: Exception) {
+        }
+        return false;
+    }
+
+    suspend fun signIn(email: String, password: String): String {
+        Log.d(TAG, "Signing in: $email")
+        val request = LoginRequest(email, password)
+        try {
+            val response = api.signIn(request)
+            Log.d("$TAG 123", response.toString())
+            if(response.code() == 200) {
+                return response.body()?.token ?: ""
+            }
+        } catch (e: Exception) {
+        }
+        return "";
+    }
+
+    suspend fun reportHazard(
+        token: String,
+        latitude: Double,
+        longitude: Double,
+        type: String,
+        description: String? = null
+    ) {
+        val request = NewHazardRequest(latitude, longitude, type, description)
+        try {
+            val response = api.reportHazard("Bearer $token", request)
+        } catch (e: Exception) {
         }
     }
 }

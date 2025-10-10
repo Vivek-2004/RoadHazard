@@ -2,6 +2,7 @@ package com.drive.roadhazard.viewmodels
 
 import android.app.Application
 import android.location.Location
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -121,9 +122,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         eventRepository.stopPeriodicUpload()
     }
 
-    fun signInAPI() {
-        viewModelScope.launch {
+    var isRegisterSuccess by mutableStateOf(false)
 
+
+    fun signUp(email: String, password: String, name: String, phoneNumber: String) {
+        viewModelScope.launch {
+            isRegisterSuccess = eventRepository.signUp(email, password, name, phoneNumber)
+        }
+    }
+
+    fun signIn(email: String, password: String) {
+        println("vivek")
+        Log.e("EventRepository", "Login Button Clicked")
+        viewModelScope.launch {
+            jwt = eventRepository.signIn(email, password)
+        }
+    }
+
+    fun reportNewHazard(latitude: Double, longitude: Double, type: String, description: String? = null) {
+        viewModelScope.launch {
+            eventRepository.reportHazard(jwt, latitude, longitude, type, description)
         }
     }
 }

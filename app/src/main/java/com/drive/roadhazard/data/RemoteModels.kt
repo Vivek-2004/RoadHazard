@@ -8,10 +8,8 @@ data class RegisterRequest(
 )
 
 data class RegisterResponse(
-    val message: String,
-    val user: RemoteUser
+    val message: String
 )
-
 
 data class LoginRequest(
     val email: String,
@@ -20,10 +18,22 @@ data class LoginRequest(
 
 data class LoginResponse(
     val message: String,
-    val token: String,
-    val user: RemoteUser
+    val token: String? = "",
+    val user: RemoteUser? = null
 )
 
 data class RemoteUser(
     val id: Int
+)
+
+data class NewHazardRequest(
+    val latitude: Double,
+    val longitude: Double,
+    val type: String,
+    val description: String? = null
+)
+
+data class NewHazardResponse(
+    val message: String,
+    val hazardId: String
 )
