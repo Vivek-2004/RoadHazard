@@ -23,7 +23,7 @@ data class LoginResponse(
 )
 
 data class RemoteUser(
-    val id: Int
+    val id: String
 )
 
 data class NewHazardRequest(

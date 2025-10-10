@@ -37,8 +37,6 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.light(Color.BLACK, Color.BLACK)
         )
 
-        requestPermissions()
-
         val sharedPref = getSharedPreferences("Road", Context.MODE_PRIVATE)
         val prefEditor = sharedPref.edit()
 
@@ -50,27 +48,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             RoadHazardTheme {
                 var isLoggedIn by remember {
-                    mutableStateOf(
-                        sharedPref.getBoolean(
-                            "isLoggedIn",
-                            false
-                        )
-                    )
+                    mutableStateOf(sharedPref.getBoolean("isLoggedIn",false))
                 }
+
                 if (isLoggedIn) {
                     val _jwt: String? = sharedPref.getString("jwt", null)
                     if (!_jwt.isNullOrBlank()) {
                         viewModel.onLoginSuccess(_jwt)
                     }
                     MyApp(viewModel = viewModel)
+                    requestPermissions()
                 } else {
                     LoginScreen(
                         viewModel = viewModel,
-                        onLoginSuccess = { jwt ->
-                            prefEditor.putBoolean("isLoggedIn", true)
-                            prefEditor.putString("jwt", jwt)
-                            prefEditor.apply()
-                            isLoggedIn = true
+                        onLoginSuccess = {
+                            if (viewModel.jwt.isNotEmpty()) {
+                                prefEditor.putBoolean("isLoggedIn", true)
+                                prefEditor.putString("jwt", viewModel.jwt)
+                                prefEditor.apply()
+                                isLoggedIn = true
+                            }
                         }
                     )
                 }

@@ -27,7 +27,8 @@ class EventRepository {
         private const val BASE_URL = "https://roadmap-x7c3.onrender.com"
     }
 
-    // Enhanced HTTP Client with logging
+    private var pendingEvents: MutableList<RoadEvent>? = null
+    private var isUploadRunning = false
     private val httpClient by lazy {
         val loggingInterceptor = HttpLoggingInterceptor { message ->
             Log.d(TAG, "Network: $message")
@@ -61,12 +62,51 @@ class EventRepository {
         }
     }
 
-    private var pendingEvents: MutableList<RoadEvent>? = null
-    private var isUploadRunning = false
+    suspend fun signUp(email: String, password: String, name: String, phoneNumber: String): Boolean {
+        val request = RegisterRequest(email, password, name, phoneNumber)
+        try {
+            val response = api.signUp(request)
+            Log.d(TAG, response.toString())
+            if (response.isSuccessful) {
+                return true
+            }
+        } catch(e: Exception) {
+        }
+        return false;
+    }
+
+    suspend fun signIn(email: String, password: String): String {
+        val request = LoginRequest(email, password)
+        try {
+            val response = api.signIn(request)
+            Log.d("${TAG}123", response.toString())
+            if(response.code() == 200) {
+                Log.d("${TAG}1234", response.body().toString())
+                return response.body()?.token ?: ""
+            }
+        } catch (e: Exception) {
+            Log.e("${TAG}123", e.toString())
+        }
+        return "";
+    }
+
+    suspend fun reportHazard(
+        token: String,
+        latitude: Double,
+        longitude: Double,
+        type: String,
+        description: String? = null
+    ) {
+        val request = NewHazardRequest(latitude, longitude, type, description)
+        try {
+            val response = api.reportHazard("Bearer $token", request)
+        } catch (e: Exception) {
+        }
+    }
+
 
     fun startPeriodicUpload(detectedEvents: MutableList<RoadEvent>) {
         if (isUploadRunning) return
-
         pendingEvents = detectedEvents
         isUploadRunning = true
         handler.post(uploadRunnable)
@@ -175,44 +215,4 @@ class EventRepository {
         }
     }
 
-    suspend fun signUp(email: String, password: String, name: String, phoneNumber: String): Boolean {
-        val request = RegisterRequest(email, password, name, phoneNumber)
-        try {
-            val response = api.signUp(request)
-            Log.d(TAG, response.toString())
-            if (response.isSuccessful) {
-                return true
-            }
-        } catch(e: Exception) {
-        }
-        return false;
-    }
-
-    suspend fun signIn(email: String, password: String): String {
-        Log.d(TAG, "Signing in: $email")
-        val request = LoginRequest(email, password)
-        try {
-            val response = api.signIn(request)
-            Log.d("$TAG 123", response.toString())
-            if(response.code() == 200) {
-                return response.body()?.token ?: ""
-            }
-        } catch (e: Exception) {
-        }
-        return "";
-    }
-
-    suspend fun reportHazard(
-        token: String,
-        latitude: Double,
-        longitude: Double,
-        type: String,
-        description: String? = null
-    ) {
-        val request = NewHazardRequest(latitude, longitude, type, description)
-        try {
-            val response = api.reportHazard("Bearer $token", request)
-        } catch (e: Exception) {
-        }
-    }
 }

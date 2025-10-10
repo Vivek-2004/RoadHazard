@@ -25,17 +25,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val locationManager: LocationManager
     private val sensorEventManager: SensorEventManager
 
+    var permissionsGranted by mutableStateOf(false)
+
+    var isLoggedIn by mutableStateOf(true)
+    var isRegisterSuccess by mutableStateOf(false)
+    var jwt by mutableStateOf("")
+
     // State
     var currentLocation by mutableStateOf<Location?>(null)
     var currentSpeed by mutableStateOf(0f)
     var selectedVehicleType by mutableStateOf(VehicleType.TWO_WHEELER)
     var selectedOrientation by mutableStateOf(PhoneOrientation.MOUNTER)
-    var isLoggedIn by mutableStateOf(true)
-    var jwt by mutableStateOf("")
     val detectedEvents = mutableListOf<RoadEvent>()
     val mapEvents = mutableStateListOf<EventResponse>()
     var pendingEvent by mutableStateOf<RoadEvent?>(null)
-    var permissionsGranted by mutableStateOf(false)
 
     init {
         locationManager = LocationManager(application) { location, speed ->
@@ -50,17 +53,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun signUp(email: String, password: String, name: String, phoneNumber: String) {
+        viewModelScope.launch {
+            isRegisterSuccess = eventRepository.signUp(email, password, name, phoneNumber)
+        }
+    }
+
+    fun signIn(email: String, password: String) {
+        viewModelScope.launch {
+            jwt = eventRepository.signIn(email, password)
+        }
+    }
+
+    fun reportNewHazard(latitude: Double, longitude: Double, type: String, description: String? = null) {
+        viewModelScope.launch {
+            eventRepository.reportHazard(jwt, latitude, longitude, type, description)
+        }
+    }
+
     fun onLoginSuccess(_jwt: String) {
         jwt = _jwt
         isLoggedIn = true
-        if (permissionsGranted) {
-            startSensorCollection()
-        }
     }
 
     fun onPermissionResult(isGranted: Boolean) {
         permissionsGranted = isGranted
-        if (isGranted && isLoggedIn) {
+    }
+
+    fun onVehicleSelectionComplete() {
+        sensorEventManager.updateVehicleSettings(
+            selectedVehicleType,
+            selectedOrientation
+        )
+        if (permissionsGranted) {
             startSensorCollection()
         }
     }
@@ -72,17 +97,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedOrientation
         )
         locationManager.startLocationUpdates()
-        eventRepository.startPeriodicUpload(detectedEvents)
-    }
-
-    fun onVehicleSelectionComplete() {
-        sensorEventManager.updateVehicleSettings(
-            selectedVehicleType,
-            selectedOrientation
-        )
-        if (permissionsGranted) {
-            startSensorCollection()
-        }
     }
 
     private fun fetchNearbyEvents(location: Location) {
@@ -122,24 +136,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         eventRepository.stopPeriodicUpload()
     }
 
-    var isRegisterSuccess by mutableStateOf(false)
-
-
-    fun signUp(email: String, password: String, name: String, phoneNumber: String) {
-        viewModelScope.launch {
-            isRegisterSuccess = eventRepository.signUp(email, password, name, phoneNumber)
-        }
-    }
-
-    fun signIn(email: String, password: String) {
-        viewModelScope.launch {
-            jwt = eventRepository.signIn(email, password)
-        }
-    }
-
-    fun reportNewHazard(latitude: Double, longitude: Double, type: String, description: String? = null) {
-        viewModelScope.launch {
-            eventRepository.reportHazard(jwt, latitude, longitude, type, description)
-        }
-    }
 }

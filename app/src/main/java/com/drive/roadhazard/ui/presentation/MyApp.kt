@@ -20,7 +20,6 @@ import com.drive.roadhazard.viewmodels.MainViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyApp(viewModel: MainViewModel) {
-
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     // var currentScreen = currentBackStackEntry?.destination?.route
@@ -50,8 +49,8 @@ fun MyApp(viewModel: MainViewModel) {
                     onVehicleTypeChange = { viewModel.selectedVehicleType = it },
                     onOrientationChange = { viewModel.selectedOrientation = it },
                     onSelectionComplete = {
-                        navController.navigate(NavigationDestination.MAIN_SCREEN.name)
                         viewModel.onVehicleSelectionComplete()
+                        navController.navigate(NavigationDestination.MAIN_SCREEN.name)
                     }
                 )
             }

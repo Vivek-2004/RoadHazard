@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,18 +28,38 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.drive.roadhazard.viewmodels.MainViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (String) -> Unit,
+    onLoginSuccess: () -> Unit,
     viewModel: MainViewModel
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var isRegistering by remember { mutableStateOf(false) }
+
+    fun handleLogin() {
+        coroutineScope.launch {
+            viewModel.signIn(email, password)
+            delay(4500)
+            onLoginSuccess()
+        }
+    }
+
+    fun handleRegister() {
+        viewModel.signUp(email, password, name, phoneNumber)
+        Toast.makeText(
+            context,
+            if (viewModel.isRegisterSuccess) "Registration successful" else "Registration failed",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
 
     Column(
         modifier = Modifier
@@ -98,18 +119,9 @@ fun LoginScreen(
             onClick = {
                 Toast.makeText(context, "Clicked", Toast.LENGTH_SHORT).show()
                 if (isRegistering) {
-                    viewModel.signUp(email, password, name, phoneNumber)
-                    Toast.makeText(
-                        context,
-                        if (viewModel.isRegisterSuccess) "Registration successful" else "Registration failed",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    handleRegister()
                 } else {
-                    viewModel.signIn(email, password)
-                    Toast.makeText(context,viewModel.jwt + " abc",Toast.LENGTH_SHORT).show()
-                    if (viewModel.jwt.isNotEmpty()) {
-                        onLoginSuccess(viewModel.jwt)
-                    }
+                    handleLogin()
                 }
             },
             modifier = Modifier
