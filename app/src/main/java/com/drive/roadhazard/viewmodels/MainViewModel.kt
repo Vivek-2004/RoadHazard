@@ -132,8 +132,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun signIn(email: String, password: String) {
-        println("vivek")
-        Log.e("EventRepository", "Login Button Clicked")
         viewModelScope.launch {
             jwt = eventRepository.signIn(email, password)
         }

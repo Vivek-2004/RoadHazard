@@ -39,7 +39,6 @@ fun LoginScreen(
     var name by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var isRegistering by remember { mutableStateOf(false) }
-    var clickCount by remember { mutableStateOf(0) }
 
     Column(
         modifier = Modifier
@@ -97,12 +96,7 @@ fun LoginScreen(
 
         Button(
             onClick = {
-                Toast.makeText(
-                    context,
-                    "clicked $clickCount",
-                    Toast.LENGTH_SHORT
-                ).show()
-                clickCount++
+                Toast.makeText(context, "Clicked", Toast.LENGTH_SHORT).show()
                 if (isRegistering) {
                     viewModel.signUp(email, password, name, phoneNumber)
                     Toast.makeText(
@@ -111,15 +105,9 @@ fun LoginScreen(
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
-                    Log.d("EventRepository", "Signing in comp: $email")
                     viewModel.signIn(email, password)
-                    Toast.makeText(
-                        context,
-                        viewModel.jwt + " abc",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(context,viewModel.jwt + " abc",Toast.LENGTH_SHORT).show()
                     if (viewModel.jwt.isNotEmpty()) {
-
                         onLoginSuccess(viewModel.jwt)
                     }
                 }
