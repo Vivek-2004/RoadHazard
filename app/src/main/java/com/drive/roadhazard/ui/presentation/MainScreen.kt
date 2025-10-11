@@ -1,6 +1,6 @@
 package com.drive.roadhazard.ui.presentation
 
-import android.location.Location
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,9 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import com.drive.roadhazard.R
-import com.drive.roadhazard.data.EventResponse
-import com.drive.roadhazard.data.RoadEvent
-import com.drive.roadhazard.data.VehicleType
+import com.drive.roadhazard.viewmodels.MainViewModel
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -41,14 +42,84 @@ import org.osmdroid.views.overlay.Marker
 @Composable
 fun MainScreen(
     navController: NavController,
-    currentLocation: Location?,
-    selectedVehicleType: VehicleType,
-    currentSpeed: Float,
-    detectedEvents: List<RoadEvent>,
-    mapEvents: List<EventResponse>,
-    onStopClick: () -> Unit
+    viewModel: MainViewModel
 ) {
+    val context = LocalContext.current
     var mapCenterTarget by remember { mutableStateOf<GeoPoint?>(null) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var showStopDialog by remember { mutableStateOf(false) }
+
+    val currentLocation = viewModel.currentLocation
+    val selectedVehicleType = viewModel.selectedVehicleType
+    val currentSpeed = viewModel.currentSpeed
+    val detectedEvents = viewModel.detectedEvents.toList()
+    val mapEvents = viewModel.mapEvents.toList()
+    val pendingEvent = viewModel.pendingEvent
+
+    BackHandler {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Exit") },
+            text = { Text("Are you sure you want to exit?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        navController.navigate(NavigationDestination.CONFIGURATION_SCREEN.name)
+                        viewModel.stopSensorCollections()
+                        viewModel.showStopText = true
+                    }
+                ) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showExitDialog = false
+                    }
+                ) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showStopDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("S T O P") },
+            text = { Text("Do you want to stop your journey?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.showStopText = false
+                        viewModel.stopSensorCollections()
+                        navController.navigate(NavigationDestination.DETAILS_SCREEN.name)
+                    }
+                ) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStopDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (pendingEvent != null) {
+        EventConfirmationDialog(
+            event = pendingEvent,
+            onConfirm = { confirm ->
+                viewModel.confirmEvent(confirm)
+            }
+        )
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -115,13 +186,15 @@ fun MainScreen(
                 modifier = Modifier
                     .padding(vertical = 18.dp, horizontal = 10.dp)
                     .weight(0.75f),
-                containerColor = Color.Red,
+                containerColor = if (viewModel.showStopText) Color.Red else Color.Gray,
                 onClick = {
-                    onStopClick()
+                    if (viewModel.showStopText) {
+                        showStopDialog = true
+                    }
                 }
             ) {
                 Text(
-                    text = "S  T  O  P",
+                    text = if (viewModel.showStopText) "S  T  O  P" else "S T O P P E D",
                     fontSize = 18.sp,
                     color = Color.White,
                     fontWeight = FontWeight.Black
@@ -132,45 +205,44 @@ fun MainScreen(
                 modifier = Modifier
                     .padding(vertical = 18.dp, horizontal = 10.dp)
                     .weight(0.25f),
-                onClick = {
-                    currentLocation?.let {
-                        mapCenterTarget = GeoPoint(it.latitude, it.longitude)
-                    }
-                }
+                onClick = {}
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.location),
-                    contentDescription = "Current Location"
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = currentSpeed.toInt().toString(),
+                        fontSize = 18.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "km/h",
+                        fontSize = 12.sp,
+                        color = Color.LightGray
+                    )
+                }
             }
         }
 
         FloatingActionButton(
-            onClick = {},
+            onClick = {
+                currentLocation?.let {
+                    mapCenterTarget = GeoPoint(it.latitude, it.longitude)
+                }
+            },
             shape = CircleShape,
             modifier = Modifier
                 .padding(bottom = 82.dp, end = 12.dp)
                 .align(Alignment.BottomEnd)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = currentSpeed.toInt().toString(),
-                    fontSize = 18.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = "km/h",
-                    fontSize = 12.sp,
-                    color = Color.LightGray
-                )
-            }
+            Icon(
+                painter = painterResource(R.drawable.location),
+                contentDescription = "Current Location"
+            )
         }
 
-        // Details
         Card(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -204,6 +276,5 @@ fun MainScreen(
                 )
             }
         }
-
     }
 }

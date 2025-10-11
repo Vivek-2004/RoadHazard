@@ -8,9 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,23 +46,46 @@ fun LoginScreen(
     var name by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var isRegistering by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
 
     fun handleLogin() {
+        isLoading = true
         coroutineScope.launch {
             viewModel.signIn(email, password)
-            delay(4500)
-            onLoginSuccess()
+            delay(4000)
+            if (viewModel.jwt.isNotEmpty()) {
+                onLoginSuccess()
+            } else {
+                Toast.makeText(context, "Invalid Credentials", Toast.LENGTH_SHORT).show()
+            }
+            isLoading = false
         }
     }
 
     fun handleRegister() {
-        viewModel.signUp(email, password, name, phoneNumber)
-        Toast.makeText(
-            context,
-            if (viewModel.isRegisterSuccess) "Registration successful" else "Registration failed",
-            Toast.LENGTH_SHORT
-        ).show()
+        isLoading = true
+        coroutineScope.launch {
+            viewModel.signUp(email, password, name, phoneNumber)
+            delay(3000)
+            if (viewModel.isRegisterSuccess) {
+                Toast.makeText(context, "User Registered Successfully", Toast.LENGTH_SHORT).show()
+                isRegistering = false
+            } else {
+                Toast.makeText(context, "User Registration Failed", Toast.LENGTH_SHORT).show()
+            }
+            isLoading = false
+        }
     }
+
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = Color(0xFF2196F3),
+        unfocusedBorderColor = Color(0xFFBDBDBD),
+        focusedLabelColor = Color(0xFF2196F3),
+        unfocusedLabelColor = Color(0xFF757575),
+        cursorColor = Color(0xFF2196F3),
+        focusedTextColor = Color(0xFF212121),
+        unfocusedTextColor = Color(0xFF424242)
+    )
 
     Column(
         modifier = Modifier
@@ -69,7 +95,7 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = if (isRegistering) "Sign Up" else "Sign In",
+            text = if (isRegistering) "Register" else "Sign In",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF2196F3),
@@ -80,6 +106,9 @@ fun LoginScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = textFieldColors,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -90,6 +119,9 @@ fun LoginScreen(
             onValueChange = { password = it },
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = textFieldColors,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp)
@@ -100,6 +132,9 @@ fun LoginScreen(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Name") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = textFieldColors,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
@@ -109,33 +144,42 @@ fun LoginScreen(
                 value = phoneNumber,
                 onValueChange = { phoneNumber = it },
                 label = { Text("Phone Number") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = textFieldColors,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp)
             )
         }
 
-        Button(
-            onClick = {
-                Toast.makeText(context, "Clicked", Toast.LENGTH_SHORT).show()
-                if (isRegistering) {
-                    handleRegister()
-                } else {
-                    handleLogin()
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF2196F3)
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.padding(16.dp),
+                color = Color.Black
             )
-        ) {
-            Text(
-                text = if (isRegistering) "Register" else "Login",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+        } else {
+            Button(
+                onClick = {
+                    if (isRegistering) {
+                        handleRegister()
+                    } else {
+                        handleLogin()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF2196F3)
+                )
+            ) {
+                Text(
+                    text = if (isRegistering) "Register" else "Login",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
 
         TextButton(

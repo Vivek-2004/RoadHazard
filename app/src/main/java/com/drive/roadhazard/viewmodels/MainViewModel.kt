@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.drive.roadhazard.data.EventResponse
+import com.drive.roadhazard.data.EventType
 import com.drive.roadhazard.data.PhoneOrientation
 import com.drive.roadhazard.data.RoadEvent
 import com.drive.roadhazard.data.VehicleType
@@ -18,8 +19,6 @@ import com.drive.roadhazard.repositories.EventRepository
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-
-    // Managers
     private val eventRepository = EventRepository()
     private val locationManager: LocationManager
     private val sensorEventManager: SensorEventManager
@@ -35,11 +34,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var currentSpeed by mutableStateOf(0f)
     var selectedVehicleType by mutableStateOf(VehicleType.TWO_WHEELER)
     var selectedOrientation by mutableStateOf(PhoneOrientation.MOUNTER)
-    val detectedEvents = mutableListOf<RoadEvent>()
+    var detectedEvents = mutableListOf<RoadEvent>()
     val mapEvents = mutableStateListOf<EventResponse>()
     var pendingEvent by mutableStateOf<RoadEvent?>(null)
+    var showStopText by mutableStateOf(true)
+
+    var testList = listOf(
+        RoadEvent(
+            type = EventType.POTHOLE,
+            latitude = 22.5726,
+            longitude = 88.3639,
+            timestamp = System.currentTimeMillis() - 600000,
+            confidence = 0.92f,
+            speed = 45.5f
+        ),
+        RoadEvent(
+            type = EventType.SPEED_BREAKER,
+            latitude = 22.5742,
+            longitude = 88.3701,
+            timestamp = System.currentTimeMillis() - 1200000,
+            confidence = 0.87f,
+            speed = 38.2f
+        ),
+        RoadEvent(
+            type = EventType.SPEED_BREAKER,
+            latitude = 22.5689,
+            longitude = 88.3611,
+            timestamp = System.currentTimeMillis() - 300000,
+            confidence = 0.96f,
+            speed = 22.0f,
+            confirmed = true
+        ),
+        RoadEvent(
+            type = EventType.BROKEN_PATCH,
+            latitude = 22.5795,
+            longitude = 88.3724,
+            timestamp = System.currentTimeMillis() - 900000,
+            confidence = 0.75f,
+            speed = 10.0f
+        ),
+        RoadEvent(
+            type = EventType.POTHOLE,
+            latitude = 22.5803,
+            longitude = 88.3698,
+            timestamp = System.currentTimeMillis() - 1800000,
+            confidence = 0.83f,
+            speed = 5.0f,
+            confirmed = true
+        )
+    )
 
     init {
+        detectedEvents.addAll(testList)
         locationManager = LocationManager(application) { location, speed ->
             currentLocation = location
             currentSpeed = speed
@@ -121,8 +167,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        sensorEventManager.stopSensorCollection()
-        locationManager.stopLocationUpdates()
+        stopSensorCollections()
     }
 
 }
