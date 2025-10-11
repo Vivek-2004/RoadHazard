@@ -68,7 +68,11 @@ fun LoginScreen(
             viewModel.signUp(email, password, name, phoneNumber)
             delay(3000)
             if (viewModel.isRegisterSuccess) {
-                Toast.makeText(context, "User Registered Successfully", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "Registered Successfully, you can now Sign In",
+                    Toast.LENGTH_SHORT
+                ).show()
                 isRegistering = false
             } else {
                 Toast.makeText(context, "User Registration Failed", Toast.LENGTH_SHORT).show()
