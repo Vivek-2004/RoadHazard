@@ -42,45 +42,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var testList = listOf(
         RoadEvent(
             type = EventType.POTHOLE,
-            latitude = 22.5726,
-            longitude = 88.3639,
+            latitude = 00.0000,
+            longitude = 00.0000,
             timestamp = System.currentTimeMillis() - 600000,
             confidence = 0.92f,
             speed = 45.5f
-        ),
-        RoadEvent(
-            type = EventType.SPEED_BREAKER,
-            latitude = 22.5742,
-            longitude = 88.3701,
-            timestamp = System.currentTimeMillis() - 1200000,
-            confidence = 0.87f,
-            speed = 38.2f
-        ),
-        RoadEvent(
-            type = EventType.SPEED_BREAKER,
-            latitude = 22.5689,
-            longitude = 88.3611,
-            timestamp = System.currentTimeMillis() - 300000,
-            confidence = 0.96f,
-            speed = 22.0f,
-            confirmed = true
-        ),
-        RoadEvent(
-            type = EventType.BROKEN_PATCH,
-            latitude = 22.5795,
-            longitude = 88.3724,
-            timestamp = System.currentTimeMillis() - 900000,
-            confidence = 0.75f,
-            speed = 10.0f
-        ),
-        RoadEvent(
-            type = EventType.POTHOLE,
-            latitude = 22.5803,
-            longitude = 88.3698,
-            timestamp = System.currentTimeMillis() - 1800000,
-            confidence = 0.83f,
-            speed = 5.0f,
-            confirmed = true
         )
     )
 
@@ -93,9 +59,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         sensorEventManager = SensorEventManager(application) { roadEvent ->
-            pendingEvent = roadEvent
+            // Check for broken patch
+            if (isBrokenPatch(roadEvent)) {
+                pendingEvent = roadEvent.copy(type = EventType.BROKEN_PATCH)
+            } else {
+                pendingEvent = roadEvent
+            }
         }
     }
+
+    private fun isBrokenPatch(newEvent: RoadEvent): Boolean {
+        val recentEvents = detectedEvents.filter {
+            System.currentTimeMillis() - it.timestamp < 5000 // 5 seconds window
+        }
+
+        if (recentEvents.size > 2) {
+            // If there are more than 2 events in the last 5 seconds, it's likely a broken patch
+            return true
+        }
+        return false
+    }
+
 
     fun signUp(email: String, password: String, name: String, phoneNumber: String) {
         viewModelScope.launch {

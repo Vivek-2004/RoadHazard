@@ -3,7 +3,6 @@ package com.drive.roadhazard.sensors
 import android.util.Log
 import com.drive.roadhazard.data.EventType
 import com.drive.roadhazard.data.VehicleType
-import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -13,6 +12,7 @@ class SensorProcessor {
     private val zAxisBuffer = mutableListOf<Float>()
     private val speedBuffer = mutableListOf<Float>()
     private var lastEventTime = 0L
+    private val speedHistory = mutableListOf<Float>()
 
     companion object {
         private const val TAG = "SensorProcessor"
@@ -26,13 +26,29 @@ class SensorProcessor {
             VehicleType.FOUR_WHEELER -> Pair(1.08f, 0.41f)
         }
 
-        val speedFactor = if (speed > 20f) {
-            val scalingFactor = 0.05f
-            1f + (speed - 20f) * scalingFactor / 20f
-        } else 1f
+        speedHistory.add(speed)
+        if (speedHistory.size > 10) { // Keep a window of the last 10 speed readings
+            speedHistory.removeAt(0)
+        }
 
-        val dynamicSpeedBreakerThreshold = baseThresholds.first * speedFactor
-        val dynamicPotholeThreshold = baseThresholds.second * speedFactor
+        val movingAverageSpeed = speedHistory.average().toFloat()
+
+        val L = 20f // Base speed from which to start adjusting the threshold
+        val B = 20f // Base point
+        val S = 0.05f // Scaling factor
+
+        val dynamicSpeedBreakerThreshold = if (movingAverageSpeed > B) {
+            baseThresholds.first + (movingAverageSpeed - L) * S
+        } else {
+            baseThresholds.first
+        }
+
+        val dynamicPotholeThreshold = if (movingAverageSpeed > B) {
+            baseThresholds.second + (movingAverageSpeed - L) * S
+        } else {
+            baseThresholds.second
+        }
+
 
         Log.d(
             TAG,
@@ -50,15 +66,9 @@ class SensorProcessor {
         // Log raw sensor data
         Log.d(TAG, "Raw Accel -> X: $ax, Y: $ay, Z: $az")
 
-        // Apply low-pass filter
-        val alpha = 0.8f
-        val filteredAx = ax * alpha
-        val filteredAy = ay * alpha
-        val filteredAz = az * alpha
-
         // Calculate Euler angles
-        val pitch = atan2(filteredAy, filteredAz)
-        val roll = atan2(-filteredAx, sqrt(filteredAy * filteredAy + filteredAz * filteredAz))
+        val pitch = atan2(ay, az)
+        val roll = atan2(-ax, sqrt(ay * ay + az * az))
 
         // Reorient to vehicle reference frame
         val cosPitch = cos(pitch)
@@ -70,10 +80,15 @@ class SensorProcessor {
         val reorientedY = ay * cosPitch - az * sinPitch
         val reorientedZ = -ax * sinRoll + ay * cosRoll * sinPitch + az * cosRoll * cosPitch
 
-        // Log reoriented sensor data
-        Log.d(TAG, "Reoriented Accel -> X: $reorientedX, Y: $reorientedY, Z: $reorientedZ")
+        // Apply low-pass filter to the reoriented Z-axis value
+        val alpha = 0.8f
+        val filteredZ = reorientedZ * alpha
 
-        return Triple(reorientedX, reorientedY, reorientedZ)
+
+        // Log reoriented sensor data
+        Log.d(TAG, "Reoriented Accel -> X: $reorientedX, Y: $reorientedY, Z: $filteredZ")
+
+        return Triple(reorientedX, reorientedY, filteredZ)
     }
 
     fun detectEvent(
@@ -129,26 +144,6 @@ class SensorProcessor {
             zAxisBuffer.clear()
             speedBuffer.clear()
             return EventType.POTHOLE
-        }
-
-        // Broken patch detection (sustained low acceleration with speed reduction)
-        val speedVariation = speedBuffer.let { speeds ->
-            if (speeds.size > 3) {
-                speeds.takeLast(3).maxOrNull()!! - speeds.takeLast(3).minOrNull()!!
-            } else 0f
-        }
-
-        if (speedVariation > 15f && avgSpeed < 20f && abs(zAccel) > 0.8f) {
-            Log.d(
-                TAG,
-                "EVENT DETECTED: BROKEN_PATCH -> Condition met: speedVariation ($speedVariation) > 15 AND avgSpeed ($avgSpeed) < 20 AND abs(zAccel) (${
-                    abs(zAccel)
-                }) > 0.8"
-            )
-            lastEventTime = timestamp
-            zAxisBuffer.clear()
-            speedBuffer.clear()
-            return EventType.BROKEN_PATCH
         }
 
         return null
