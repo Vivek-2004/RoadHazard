@@ -58,16 +58,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             sensorEventManager.updateLocationAndSpeed(location, speed)
         }
 
+        // *** MODIFIED LOGIC ***
+        // Removed the 'isBrokenPatch' check.
+        // Any event detected by the SensorEventManager (now using RoADApp logic)
+        // will be directly set as the 'pendingEvent' to trigger the confirmation dialog.
         sensorEventManager = SensorEventManager(application) { roadEvent ->
-            // Check for broken patch
-            if (isBrokenPatch(roadEvent)) {
-                pendingEvent = roadEvent.copy(type = EventType.BROKEN_PATCH)
-            } else {
-                pendingEvent = roadEvent
-            }
+            pendingEvent = roadEvent
         }
+        // *** END MODIFIED LOGIC ***
     }
 
+    // *** REMOVED FUNCTION ***
+    // This function is no longer needed as RoADApp does not detect broken patches.
+    /*
     private fun isBrokenPatch(newEvent: RoadEvent): Boolean {
         val recentEvents = detectedEvents.filter {
             System.currentTimeMillis() - it.timestamp < 5000 // 5 seconds window
@@ -79,8 +82,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         return false
     }
+    */
+    // *** END REMOVED FUNCTION ***
 
 
+    // --- UNCHANGED FUNCTIONS (as requested) ---
     fun signUp(email: String, password: String, name: String, phoneNumber: String) {
         viewModelScope.launch {
             isRegisterSuccess = eventRepository.signUp(email, password, name, phoneNumber)
@@ -108,6 +114,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         jwt = _jwt
         isLoggedIn = true
     }
+    // --- END UNCHANGED FUNCTIONS ---
 
     fun onPermissionResult(isGranted: Boolean) {
         permissionsGranted = isGranted
@@ -137,6 +144,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         locationManager.stopLocationUpdates()
     }
 
+    // --- UNCHANGED CONFIRMATION LOGIC (as requested) ---
+    // This logic remains to show the popup and add to the list upon user confirmation.
     fun confirmEvent(confirm: Boolean) {
         pendingEvent?.let { event ->
             if (confirm) {

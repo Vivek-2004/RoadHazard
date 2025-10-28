@@ -1,151 +1,104 @@
 package com.drive.roadhazard.sensors
 
-import android.util.Log
 import com.drive.roadhazard.data.EventType
-import com.drive.roadhazard.data.VehicleType
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 class SensorProcessor {
-    private val zAxisBuffer = mutableListOf<Float>()
-    private val speedBuffer = mutableListOf<Float>()
-    private var lastEventTime = 0L
-    private val speedHistory = mutableListOf<Float>()
 
-    companion object {
-        private const val TAG = "SensorProcessor"
-    }
+    // --- RoADApp variables ---
+    // From: royrivnam/roadapp/.../MainActivity.java (lines 103, 720-735)
 
-    // Dynamic threshold calculation based on research
-    fun calculateDynamicThreshold(speed: Float, vehicleType: VehicleType): Pair<Float, Float> {
-        val baseThresholds = when (vehicleType) {
-            VehicleType.TWO_WHEELER -> Pair(1.8f, 0.714f) // speed breaker, pothole
-            VehicleType.THREE_WHEELER -> Pair(1.47f, 0.612f)
-            VehicleType.FOUR_WHEELER -> Pair(1.08f, 0.41f)
-        }
+    // ori[0] = pitch (a), ori[1] = roll (b)
+    private val ori = DoubleArray(2)
+    private var prev3: Long = 0 // Cooldown timestamp
+    private var adjustment: Int = 0
+    private var prev: Long = 0 // Timestamp for orientation recalibration
 
-        speedHistory.add(speed)
-        if (speedHistory.size > 10) { // Keep a window of the last 10 speed readings
-            speedHistory.removeAt(0)
-        }
+    // RoADApp constants from MainActivity.java (line 103)
+    private val bump_thres = 10.6
+    private val pot_thres = 4.0
+    private val lowlimit = 5.0
+    private val scaling = 5.0
+    private val baselimit = 5.0
+    // --- End RoADApp variables ---
 
-        val movingAverageSpeed = speedHistory.average().toFloat()
-
-        val L = 20f // Base speed from which to start adjusting the threshold
-        val B = 20f // Base point
-        val S = 0.05f // Scaling factor
-
-        val dynamicSpeedBreakerThreshold = if (movingAverageSpeed > B) {
-            baseThresholds.first + (movingAverageSpeed - L) * S
-        } else {
-            baseThresholds.first
-        }
-
-        val dynamicPotholeThreshold = if (movingAverageSpeed > B) {
-            baseThresholds.second + (movingAverageSpeed - L) * S
-        } else {
-            baseThresholds.second
-        }
-
-
-        Log.d(
-            TAG,
-            "Dynamic Thresholds -> Speed: $speed km/h, Vehicle: $vehicleType, SB_Threshold: $dynamicSpeedBreakerThreshold, Pothole_Threshold: $dynamicPotholeThreshold"
-        )
-
-        return Pair(
-            dynamicSpeedBreakerThreshold,
-            dynamicPotholeThreshold
-        )
-    }
-
-    // Auto-orientation based on research paper
-    fun reorientAcceleration(ax: Float, ay: Float, az: Float): Triple<Float, Float, Float> {
-        // Log raw sensor data
-        Log.d(TAG, "Raw Accel -> X: $ax, Y: $ay, Z: $az")
-
-        // Calculate Euler angles
-        val pitch = atan2(ay, az)
-        val roll = atan2(-ax, sqrt(ay * ay + az * az))
-
-        // Reorient to vehicle reference frame
-        val cosPitch = cos(pitch)
-        val sinPitch = sin(pitch)
-        val cosRoll = cos(roll)
-        val sinRoll = sin(roll)
-
-        val reorientedX = ax * cosRoll + ay * sinRoll * sinPitch + az * cosRoll * sinPitch
-        val reorientedY = ay * cosPitch - az * sinPitch
-        val reorientedZ = -ax * sinRoll + ay * cosRoll * sinPitch + az * cosRoll * cosPitch
-
-        // Apply low-pass filter to the reoriented Z-axis value
-        val alpha = 0.8f
-        val filteredZ = reorientedZ * alpha
-
-
-        // Log reoriented sensor data
-        Log.d(TAG, "Reoriented Accel -> X: $reorientedX, Y: $reorientedY, Z: $filteredZ")
-
-        return Triple(reorientedX, reorientedY, filteredZ)
-    }
-
-    fun detectEvent(
-        zAccel: Float,
-        speed: Float,
-        vehicleType: VehicleType,
+    /**
+     * This function replaces all previous detection logic.
+     * It implements the full orientation, reorientation, and thresholding
+     * logic from RoADApp's MainActivity.java (onSensorChanged method).
+     */
+    fun processNewSensorData(
+        ax: Float,
+        ay: Float,
+        az: Float,
+        speedInKmh: Float, // Speed from MainViewModel is already in km/h
         timestamp: Long
     ): EventType? {
-        // Prevent duplicate detections within 2 seconds
-        if (timestamp - lastEventTime < 2000) return null
 
-        val (speedBreakerThreshold, potholeThreshold) = calculateDynamicThreshold(
-            speed,
-            vehicleType
-        )
+        val acceleration = floatArrayOf(ax, ay, az)
 
-        zAxisBuffer.add(zAccel)
-        speedBuffer.add(speed)
+        // 1. Calculate Orientation (from RoADApp onSensorChanged, lines 728-735)
+        val sum =
+            sqrt((acceleration[0] * acceleration[0]) + (acceleration[1] * acceleration[1]) + (acceleration[2] * acceleration[2])).toDouble()
 
-        if (zAxisBuffer.size > 10) {
-            zAxisBuffer.removeAt(0)
-            speedBuffer.removeAt(0)
+        if ((timestamp - prev) > 850000) {
+            adjustment = 0
+            prev = timestamp
         }
-
-        if (zAxisBuffer.size < 5) return null
-
-        val maxZ = zAxisBuffer.maxOrNull() ?: 0f
-        val minZ = zAxisBuffer.minOrNull() ?: 0f
-        val avgSpeed = speedBuffer.average().toFloat()
-
-        // Log buffer values for analysis
-        Log.d(TAG, "Buffer Stats -> MaxZ: $maxZ, MinZ: $minZ, AvgSpeed: $avgSpeed")
-
-        // Speed breaker detection (positive peak followed by negative)
-        if (maxZ > speedBreakerThreshold && minZ < -speedBreakerThreshold * 0.5f) {
-            Log.d(
-                TAG,
-                "EVENT DETECTED: SPEED_BREAKER -> Condition met: maxZ ($maxZ) > SB_Threshold ($speedBreakerThreshold) AND minZ ($minZ) < -SB_Threshold*0.5"
+        if (Math.abs(sum - 9.80) <= 0.4 && adjustment <= 10 && (timestamp - prev) <= 1000) {
+            adjustment++
+            // ori[0] = pitch (a)
+            ori[0] = atan2(acceleration[1].toDouble(), acceleration[2].toDouble())
+            // ori[1] = roll (b)
+            ori[1] = atan2(
+                -1 * acceleration[0].toDouble(),
+                sqrt((acceleration[1] * acceleration[1]) + (acceleration[2] * acceleration[2])).toDouble()
             )
-            lastEventTime = timestamp
-            zAxisBuffer.clear()
-            speedBuffer.clear()
-            return EventType.SPEED_BREAKER
         }
 
-        // Pothole detection (negative peak)
-        if (minZ < -potholeThreshold && avgSpeed > 10f) {
-            Log.d(
-                TAG,
-                "EVENT DETECTED: POTHOLE -> Condition met: minZ ($minZ) < -Pothole_Threshold ($-potholeThreshold) AND avgSpeed ($avgSpeed) > 10"
-            )
-            lastEventTime = timestamp
-            zAxisBuffer.clear()
-            speedBuffer.clear()
-            return EventType.POTHOLE
+        val cosa = cos(ori[0])
+        val sina = sin(ori[0])
+        val cosb = cos(ori[1])
+        val sinb = sin(ori[1])
+
+        // 2. Reorient Acceleration (from RoADApp onSensorChanged, lines 739-741)
+        val acc_final = DoubleArray(3)
+        // acc_final[0] = (cosb * acceleration[0]) + (sinb * sina * acceleration[1]) + (cosa * sinb * acceleration[2])
+        // acc_final[1] = (cosa * acceleration[1]) - (sina * acceleration[2])
+        acc_final[2] =
+            (-1 * sinb * acceleration[0]) + (cosb * sina * acceleration[1]) + (cosb * cosa * acceleration[2])
+
+        // 3. Calculate Dynamic Thresholds (from RoADApp onSensorChanged, lines 758-762)
+        // RoADApp uses (speed * 3.6) because its `speed` is in m/s.
+        // Our `speedInKmh` is already in km/h, so we just use it directly.
+        val finb: Double
+        val finp: Double
+        if (speedInKmh < baselimit) {
+            finb = bump_thres
+            finp = -1 * pot_thres
+        } else {
+            // RoADApp scaling formula
+            finb = bump_thres + ((speedInKmh - lowlimit) * (scaling / 10))
+            finp = -1 * (pot_thres + ((speedInKmh - lowlimit) * (scaling / 10)))
         }
 
+        // 4. Detect Event (from RoADApp onSensorChanged, line 763)
+        // Check if Z-axis acceleration exceeds thresholds, with a 2-second cooldown
+        if ((acc_final[2] > finb || acc_final[2] < finp) && (timestamp - prev3) > 2000) {
+            prev3 = timestamp
+
+            // RoADApp flags '1' for both. We'll differentiate them.
+            return if (acc_final[2] > finb) {
+                EventType.SPEED_BREAKER
+            } else {
+                EventType.POTHOLE
+            }
+        }
+
+        // No event detected
         return null
     }
 }
