@@ -7,29 +7,16 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 class SensorProcessor {
-
-    // --- RoADApp variables ---
-    // From: royrivnam/roadapp/.../MainActivity.java (lines 103, 720-735)
-
-    // ori[0] = pitch (a), ori[1] = roll (b)
     private val ori = DoubleArray(2)
     private var prev3: Long = 0 // Cooldown timestamp
     private var adjustment: Int = 0
     private var prev: Long = 0 // Timestamp for orientation recalibration
 
-    // RoADApp constants from MainActivity.java (line 103)
     private val bump_thres = 10.6
     private val pot_thres = 4.0
     private val lowlimit = 5.0
     private val scaling = 5.0
     private val baselimit = 5.0
-    // --- End RoADApp variables ---
-
-    /**
-     * This function replaces all previous detection logic.
-     * It implements the full orientation, reorientation, and thresholding
-     * logic from RoADApp's MainActivity.java (onSensorChanged method).
-     */
     fun processNewSensorData(
         ax: Float,
         ay: Float,
@@ -50,9 +37,7 @@ class SensorProcessor {
         }
         if (Math.abs(sum - 9.80) <= 0.4 && adjustment <= 10 && (timestamp - prev) <= 1000) {
             adjustment++
-            // ori[0] = pitch (a)
             ori[0] = atan2(acceleration[1].toDouble(), acceleration[2].toDouble())
-            // ori[1] = roll (b)
             ori[1] = atan2(
                 -1 * acceleration[0].toDouble(),
                 sqrt((acceleration[1] * acceleration[1]) + (acceleration[2] * acceleration[2])).toDouble()

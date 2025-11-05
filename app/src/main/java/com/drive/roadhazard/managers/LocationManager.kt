@@ -85,7 +85,6 @@ class LocationManager(
         Log.d(TAG, "Starting location updates")
 
         try {
-            // Try Google Play Services first
             startGooglePlayServicesLocation()
         } catch (e: Exception) {
             Log.w(

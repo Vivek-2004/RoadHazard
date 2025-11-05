@@ -95,29 +95,6 @@ class SensorEventManager(
         }
     }
 
-    // This function is no longer called
-    /*
-    private fun processSensorData(reorientedZ: Float) {
-        currentLocation?.let { location ->
-            val detectedType = sensorProcessor.detectEvent(
-                reorientedZ, currentSpeed, selectedVehicleType, System.currentTimeMillis()
-            )
-
-            detectedType?.let { type ->
-                val roadEvent = RoadEvent(
-                    type = type,
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    timestamp = System.currentTimeMillis(),
-                    confidence = 0.8f,
-                    speed = currentSpeed
-                )
-                onEventDetected(roadEvent)
-            }
-        }
-    }
-    */
-
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // Not implemented
     }
