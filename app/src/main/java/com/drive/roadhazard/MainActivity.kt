@@ -79,7 +79,8 @@ class MainActivity : ComponentActivity() {
         val permissions = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.INTERNET
+            Manifest.permission.INTERNET,
+            Manifest.permission.RECORD_AUDIO
         )
 
         val permissionsToRequest = permissions.filter { permission ->

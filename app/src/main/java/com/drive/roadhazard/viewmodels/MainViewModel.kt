@@ -2,6 +2,7 @@ package com.drive.roadhazard.viewmodels
 
 import android.app.Application
 import android.location.Location
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +17,8 @@ import com.drive.roadhazard.data.VehicleType
 import com.drive.roadhazard.managers.LocationManager
 import com.drive.roadhazard.managers.SensorEventManager
 import com.drive.roadhazard.repositories.EventRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -39,6 +42,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var pendingEvent by mutableStateOf<RoadEvent?>(null)
     var showStopText by mutableStateOf(true)
 
+    // Buffer for speed breakers to detect multiple events
+    private val recentSpeedBreakers = mutableListOf<RoadEvent>()
+    private var speedBreakerTimerJob: Job? = null
+
+
     var testList = listOf(
         RoadEvent(
             type = EventType.POTHOLE,
@@ -58,35 +66,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             sensorEventManager.updateLocationAndSpeed(location, speed)
         }
 
-        // *** MODIFIED LOGIC ***
-        // Removed the 'isBrokenPatch' check.
-        // Any event detected by the SensorEventManager (now using RoADApp logic)
-        // will be directly set as the 'pendingEvent' to trigger the confirmation dialog.
         sensorEventManager = SensorEventManager(application) { roadEvent ->
-            pendingEvent = roadEvent
+
+            // *** ADDED SPEED CHECK ***
+            // Ignore any event detected if the speed is less than 5 km/h
+            if (currentSpeed < 5) {
+                Log.d("MainViewModel", "Event detected below 5 km/h, ignoring.")
+                return@SensorEventManager
+            }
+            // *** END ADDED SPEED CHECK ***
+
+            when (roadEvent.type) {
+                EventType.POTHOLE -> {
+                    // Show potholes immediately (if speed is sufficient)
+                    pendingEvent = roadEvent
+                }
+
+                EventType.SPEED_BREAKER -> {
+                    recentSpeedBreakers.add(roadEvent)
+                    // If a timer isn't already running, start one
+                    if (speedBreakerTimerJob == null || speedBreakerTimerJob?.isCompleted == true) {
+                        speedBreakerTimerJob = viewModelScope.launch {
+                            delay(2000) // Wait 2 seconds from the *first* event
+                            if (recentSpeedBreakers.size > 1) {
+                                // More than one detected in 2s
+                                val representativeEvent = recentSpeedBreakers.last()
+                                pendingEvent =
+                                    representativeEvent.copy(type = EventType.MULTIPLE_SPEED_BREAKERS)
+                            } else if (recentSpeedBreakers.size == 1) {
+                                // Only one detected
+                                pendingEvent = recentSpeedBreakers.first()
+                            }
+                            recentSpeedBreakers.clear()
+                        }
+                    }
+                }
+
+                else -> {
+                    pendingEvent = roadEvent
+                }
+            }
         }
-        // *** END MODIFIED LOGIC ***
     }
 
-    // *** REMOVED FUNCTION ***
-    // This function is no longer needed as RoADApp does not detect broken patches.
-    /*
-    private fun isBrokenPatch(newEvent: RoadEvent): Boolean {
-        val recentEvents = detectedEvents.filter {
-            System.currentTimeMillis() - it.timestamp < 5000 // 5 seconds window
-        }
-
-        if (recentEvents.size > 2) {
-            // If there are more than 2 events in the last 5 seconds, it's likely a broken patch
-            return true
-        }
-        return false
-    }
-    */
-    // *** END REMOVED FUNCTION ***
-
-
-    // --- UNCHANGED FUNCTIONS (as requested) ---
     fun signUp(email: String, password: String, name: String, phoneNumber: String) {
         viewModelScope.launch {
             isRegisterSuccess = eventRepository.signUp(email, password, name, phoneNumber)
@@ -114,7 +136,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         jwt = _jwt
         isLoggedIn = true
     }
-    // --- END UNCHANGED FUNCTIONS ---
 
     fun onPermissionResult(isGranted: Boolean) {
         permissionsGranted = isGranted
@@ -144,8 +165,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         locationManager.stopLocationUpdates()
     }
 
-    // --- UNCHANGED CONFIRMATION LOGIC (as requested) ---
-    // This logic remains to show the popup and add to the list upon user confirmation.
     fun confirmEvent(confirm: Boolean) {
         pendingEvent?.let { event ->
             if (confirm) {

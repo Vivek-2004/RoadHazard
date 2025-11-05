@@ -24,6 +24,6 @@ data class EventResponse(
     val type: String
 )
 
-enum class EventType { SPEED_BREAKER, POTHOLE, BROKEN_PATCH }
+enum class EventType { SPEED_BREAKER, POTHOLE, BROKEN_PATCH, MULTIPLE_SPEED_BREAKERS }
 enum class VehicleType { TWO_WHEELER, THREE_WHEELER, FOUR_WHEELER }
 enum class PhoneOrientation { POCKET, MOUNTER, DASHBOARD }
