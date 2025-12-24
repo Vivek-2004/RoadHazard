@@ -1,6 +1,7 @@
 package com.drive.roadhazard.viewmodels
 
 import android.app.Application
+import android.content.Context
 import android.location.Location
 import android.util.Log
 import androidx.compose.runtime.getValue
@@ -103,6 +104,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        // --- FETCH ALERT SYSTEM DATA ON INIT ---
+        val sharedPref = application.getSharedPreferences("Road", Context.MODE_PRIVATE)
+        val savedJwt = sharedPref.getString("jwt", "")
+        if (!savedJwt.isNullOrBlank()) {
+            jwt = savedJwt
+            isLoggedIn = true
+            fetchHazards()
+        }
+    }
+
+    fun fetchHazards() {
+        viewModelScope.launch {
+            if (jwt.isNotBlank()) {
+                val remoteHazards = eventRepository.getAllHazards(jwt)
+                mapEvents.clear()
+                remoteHazards.forEach { hazard ->
+                    // Map API hazard types to local types expected by UI/Logic
+                    val mappedType = when (hazard.hazardType) {
+                        "SINGLE_SPEED_BUMP" -> "speed_breaker"
+                        "MULTIPLE_SPEED_BUMP" -> "speed_breaker"
+                        "POTHOLE" -> "pothole"
+                        "ROAD_PATCH" -> "broken_patch"
+                        else -> "unknown"
+                    }
+                    mapEvents.add(
+                        EventResponse(
+                            latitude = hazard.latitude,
+                            longitude = hazard.longitude,
+                            type = mappedType
+                        )
+                    )
+                }
+                Log.d("MainViewModel", "Fetched ${mapEvents.size} hazards from backend.")
+            }
+        }
     }
 
     fun signUp(email: String, password: String, name: String, phoneNumber: String) {
@@ -136,6 +173,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onLoginSuccess(_jwt: String) {
         jwt = _jwt
         isLoggedIn = true
+        fetchHazards() // Fetch hazards when login succeeds
     }
 
     fun onPermissionResult(isGranted: Boolean) {

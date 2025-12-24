@@ -4,6 +4,7 @@ import android.util.Log
 import com.drive.roadhazard.data.LoginRequest
 import com.drive.roadhazard.data.NewHazardRequest
 import com.drive.roadhazard.data.RegisterRequest
+import com.drive.roadhazard.data.SingleHazardResponse
 import com.drive.roadhazard.network.RoadHazardAPI
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -54,8 +55,9 @@ class EventRepository {
                 return true
             }
         } catch (e: Exception) {
+            Log.e(TAG, "SignUp failed: ${e.message}")
         }
-        return false;
+        return false
     }
 
     suspend fun signIn(email: String, password: String): String {
@@ -66,8 +68,9 @@ class EventRepository {
                 return response.body()?.token ?: ""
             }
         } catch (e: Exception) {
+            Log.e(TAG, "SignIn failed: ${e.message}")
         }
-        return "";
+        return ""
     }
 
     suspend fun reportHazard(
@@ -81,7 +84,19 @@ class EventRepository {
         try {
             val response = api.reportHazard("Bearer $token", request)
         } catch (e: Exception) {
+            Log.e(TAG, "ReportHazard failed: ${e.message}")
         }
     }
 
+    suspend fun getAllHazards(token: String): List<SingleHazardResponse> {
+        try {
+            val response = api.getAllHazards("Bearer $token")
+            if (response.isSuccessful && response.body() != null) {
+                return response.body()!!
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "getAllHazards failed: ${e.message}")
+        }
+        return emptyList()
+    }
 }
