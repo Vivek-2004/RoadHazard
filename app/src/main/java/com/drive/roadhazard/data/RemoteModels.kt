@@ -37,3 +37,10 @@ data class NewHazardResponse(
     val message: String,
     val hazardId: String
 )
+
+data class SingleHazardResponse (
+    val hazardId: String,
+    val hazardType: String,
+    val latitude: Double,
+    val longitude: Double
+)
