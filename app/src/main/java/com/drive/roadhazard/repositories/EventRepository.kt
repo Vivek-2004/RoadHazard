@@ -1,5 +1,6 @@
 package com.drive.roadhazard.repositories
 
+import android.util.Log
 import com.drive.roadhazard.data.LoginRequest
 import com.drive.roadhazard.data.NewHazardRequest
 import com.drive.roadhazard.data.RegisterRequest
@@ -18,6 +19,7 @@ class EventRepository {
 
     private val httpClient by lazy {
         val loggingInterceptor = HttpLoggingInterceptor { message ->
+            Log.d("API_LOGS", message)
         }.apply {
             level = HttpLoggingInterceptor.Level.BODY
         }

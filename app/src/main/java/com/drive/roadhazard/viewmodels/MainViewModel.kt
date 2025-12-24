@@ -67,14 +67,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         sensorEventManager = SensorEventManager(application) { roadEvent ->
-
-            // *** ADDED SPEED CHECK ***
-            // Ignore any event detected if the speed is less than 5 km/h
             if (currentSpeed < 5) {
                 Log.d("MainViewModel", "Event detected below 5 km/h, ignoring.")
                 return@SensorEventManager
             }
-            // *** END ADDED SPEED CHECK ***
 
             when (roadEvent.type) {
                 EventType.POTHOLE -> {
@@ -128,7 +124,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         description: String? = null
     ) {
         viewModelScope.launch {
-            eventRepository.reportHazard(jwt, latitude, longitude, type, description)
+            if (jwt.isNotEmpty()) {
+                eventRepository.reportHazard(jwt, latitude, longitude, type, description)
+                Log.d("MainViewModel", "Reported hazard: $type at $latitude, $longitude")
+            } else {
+                Log.e("MainViewModel", "Failed to report hazard: JWT Token is missing")
+            }
         }
     }
 
@@ -172,6 +173,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 synchronized(detectedEvents) {
                     detectedEvents.add(confirmedEvent)
                 }
+
+                // Map Android EventType to API Strings
+                val apiType = when (event.type) {
+                    EventType.POTHOLE -> "POTHOLE"
+                    EventType.SPEED_BREAKER -> "SINGLE_SPEED_BUMP"
+                    EventType.MULTIPLE_SPEED_BREAKERS -> "MULTIPLE_SPEED_BUMP"
+                    EventType.BROKEN_PATCH -> "ROAD_PATCH"
+                }
+
+                // Send the report to the backend using the stored JWT
+                reportNewHazard(
+                    latitude = event.latitude,
+                    longitude = event.longitude,
+                    type = apiType
+                )
             }
             pendingEvent = null
         }
@@ -181,5 +197,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
         stopSensorCollections()
     }
-
 }
