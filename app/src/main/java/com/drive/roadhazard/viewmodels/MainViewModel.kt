@@ -43,6 +43,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var pendingEvent by mutableStateOf<RoadEvent?>(null)
     var showStopText by mutableStateOf(true)
 
+    // New state for Warning Notification
+    var activeWarning by mutableStateOf<String?>(null)
+
     // Buffer for speed breakers to detect multiple events
     private val recentSpeedBreakers = mutableListOf<RoadEvent>()
     private var speedBreakerTimerJob: Job? = null
@@ -52,10 +55,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             currentLocation = location
             currentSpeed = speed
             sensorEventManager.updateLocationAndSpeed(location, speed)
+            // Check for hazards nearby
+            checkProximityToHazards(location)
         }
 
         sensorEventManager = SensorEventManager(application) { roadEvent ->
-            if (currentSpeed < 5) {
+            if (currentSpeed < 7) {
                 Log.d("MainViewModel", "Event detected below 5 km/h, ignoring.")
                 return@SensorEventManager
             }
@@ -78,7 +83,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 pendingEvent =
                                     representativeEvent.copy(type = EventType.MULTIPLE_SPEED_BREAKERS)
                             } else if (recentSpeedBreakers.size == 1) {
-                                // Only one detected
                                 pendingEvent = recentSpeedBreakers.first()
                             }
                             recentSpeedBreakers.clear()
@@ -99,6 +103,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             jwt = savedJwt
             isLoggedIn = true
             fetchHazards()
+        }
+    }
+
+    private fun checkProximityToHazards(location: Location) {
+        // Find hazards within 20 meters
+        val nearbyHazard = mapEvents.firstOrNull { event ->
+            val eventLoc = Location("").apply {
+                latitude = event.latitude
+                longitude = event.longitude
+            }
+            location.distanceTo(eventLoc) <= 30.0f
+        }
+
+        activeWarning = nearbyHazard?.let {
+            val typeName = when (it.type) {
+                "speed_breaker" -> "Speed Breaker"
+                "pothole" -> "Pothole"
+                "broken_patch" -> "Broken Patch"
+                else -> "Hazard"
+            }
+            "⚠️ $typeName Ahead ⚠️"
         }
     }
 

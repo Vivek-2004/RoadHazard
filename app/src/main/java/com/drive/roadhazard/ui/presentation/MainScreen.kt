@@ -1,5 +1,6 @@
 package com.drive.roadhazard.ui.presentation
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -60,6 +63,7 @@ fun MainScreen(
     val detectedEvents = viewModel.detectedEvents.toList()
     val mapEvents = viewModel.mapEvents.toList()
     val pendingEvent = viewModel.pendingEvent
+    val activeWarning = viewModel.activeWarning
 
     val mapView = remember {
         MapView(context).apply {
@@ -171,7 +175,26 @@ fun MainScreen(
             mv.invalidate()
         })
 
-        // Bottom controls
+        // --- WARNING NOTIFICATION BANNER ---
+        if (activeWarning != null) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.Red),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp)
+                    .wrapContentSize()
+            ) {
+                Text(
+                    text = activeWarning,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Center,
+                    fontSize = 18.sp
+                )
+            }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -230,10 +253,15 @@ fun MainScreen(
         // Info card
         Card(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
+                .align(Alignment.BottomStart)
+                .padding(vertical = 88.dp, horizontal = 18.dp)
                 .clickable {
-                    navController.navigate(NavigationDestination.DETAILS_SCREEN.name)
+                    if (detectedEvents.isNotEmpty()) {
+                        navController.navigate(NavigationDestination.DETAILS_SCREEN.name)
+                    } else {
+                        Toast.makeText(context, "No Hazards Detected Yet !", Toast.LENGTH_SHORT)
+                            .show()
+                    }
                 }, colors = CardDefaults.cardColors(
                 containerColor = Color.White.copy(alpha = 0.9f)
             )
