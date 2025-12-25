@@ -18,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,16 +39,22 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.ScaleBarOverlay
+import org.osmdroid.views.overlay.compass.CompassOverlay
+import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 @Composable
 fun MainScreen(
-    navController: NavController,
-    viewModel: MainViewModel
+    navController: NavController, viewModel: MainViewModel
 ) {
     val context = LocalContext.current
+
     var mapCenterTarget by remember { mutableStateOf<GeoPoint?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
     var showStopDialog by remember { mutableStateOf(false) }
+    var hasCenteredInitially by remember { mutableStateOf(false) }
 
     val currentLocation = viewModel.currentLocation
     val selectedVehicleType = viewModel.selectedVehicleType
@@ -56,9 +63,22 @@ fun MainScreen(
     val mapEvents = viewModel.mapEvents.toList()
     val pendingEvent = viewModel.pendingEvent
 
-    BackHandler {
-        showExitDialog = true
+    val mapView = remember {
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+        }
     }
+
+    DisposableEffect(Unit) {
+        mapView.onResume()
+        onDispose {
+            mapView.onPause()
+            mapView.onDetach()
+        }
+    }
+
+    BackHandler { showExitDialog = true }
 
     if (showExitDialog) {
         AlertDialog(
@@ -66,214 +86,168 @@ fun MainScreen(
             title = { Text("Exit") },
             text = { Text("Are you sure you want to exit?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        navController.navigate(NavigationDestination.CONFIGURATION_SCREEN.name)
-                        viewModel.stopSensorCollections()
-                        viewModel.showStopText = true
-                    }
-                ) {
-                    Text("Yes")
-                }
+                TextButton(onClick = {
+                    navController.navigate(NavigationDestination.CONFIGURATION_SCREEN.name)
+                    viewModel.stopSensorCollections()
+                    viewModel.showStopText = true
+                }) { Text("Yes") }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showExitDialog = false
-                    }
-                ) {
-                    Text("No")
-                }
-            }
-        )
+                TextButton(onClick = { showExitDialog = false }) { Text("No") }
+            })
     }
 
     if (showStopDialog) {
         AlertDialog(
-            onDismissRequest = { showExitDialog = false },
+            onDismissRequest = { showStopDialog = false },
             title = { Text("S T O P") },
             text = { Text("Do you want to stop your journey?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.showStopText = false
-                        viewModel.stopSensorCollections()
-                        navController.navigate(NavigationDestination.DETAILS_SCREEN.name)
-                    }
-                ) {
-                    Text("Yes")
-                }
+                TextButton(onClick = {
+                    viewModel.showStopText = false
+                    viewModel.stopSensorCollections()
+                    navController.navigate(NavigationDestination.DETAILS_SCREEN.name)
+                }) { Text("Yes") }
             },
             dismissButton = {
-                TextButton(onClick = { showStopDialog = false }) {
-                    Text("No")
-                }
-            }
-        )
+                TextButton(onClick = { showStopDialog = false }) { Text("No") }
+            })
     }
 
     if (pendingEvent != null) {
         EventConfirmationDialog(
-            event = pendingEvent,
-            onConfirm = { confirm ->
-                viewModel.confirmEvent(confirm)
-            }
-        )
+            event = pendingEvent, onConfirm = { viewModel.confirmEvent(it) })
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { context ->
-                MapView(context).apply {
-                    setTileSource(TileSourceFactory.MAPNIK)
-                    setMultiTouchControls(true)
-                }
-            },
-            update = { mapView ->
-                mapCenterTarget?.let { centerPoint ->
-                    mapView.controller.animateTo(centerPoint)
-                    mapCenterTarget = null
-                }
-                mapView.overlays.clear()
-                mapEvents.forEach { event ->
-                    val marker = Marker(mapView)
-                    marker.position = GeoPoint(event.latitude, event.longitude)
-                    marker.title = event.type
+        AndroidView(modifier = Modifier.fillMaxSize(), factory = { mapView }, update = { mv ->
+            mv.overlays.clear()
 
-                    when (event.type.lowercase()) {
-                        "pothole" -> marker.setAnchor(
-                            Marker.ANCHOR_CENTER,
-                            Marker.ANCHOR_BOTTOM
-                        )
+            mv.overlays.add(ScaleBarOverlay(mv))
 
-                        "speed_breaker" -> marker.setAnchor(
-                            Marker.ANCHOR_CENTER,
-                            Marker.ANCHOR_BOTTOM
-                        )
+            mv.overlays.add(
+                CompassOverlay(
+                    context, InternalCompassOrientationProvider(context), mv
+                ).apply { enableCompass() })
 
-                        "broken_patch" -> marker.setAnchor(
-                            Marker.ANCHOR_CENTER,
-                            Marker.ANCHOR_BOTTOM
-                        )
-                    }
-                    mapView.overlays.add(marker)
-                }
-
-                currentLocation?.let { location ->
-                    val myLocationMarker = Marker(mapView)
-                    val geoPoint = GeoPoint(location.latitude, location.longitude)
-                    myLocationMarker.position = geoPoint
-                    myLocationMarker.title = "Current Location"
-                    myLocationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                    myLocationMarker.icon = mapView.context.getDrawable(R.drawable.location)
-                    mapView.overlays.add(myLocationMarker)
-                    mapView.controller.setZoom(19.0)
-                    mapView.controller.setCenter(geoPoint)
-                }
-                mapView.invalidate()
+            // Event markers
+            mapEvents.forEach { event ->
+                mv.overlays.add(
+                    Marker(mv).apply {
+                        position = GeoPoint(event.latitude, event.longitude)
+                        title = event.type
+                        icon = mv.context.getDrawable(R.drawable.speed_breaker)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        setOnMarkerClickListener { marker, _ ->
+                            marker.showInfoWindow()
+                            true
+                        }
+                    })
             }
-        )
 
+            // Current location marker (NO camera forcing)
+            currentLocation?.let {
+                val point = GeoPoint(it.latitude, it.longitude)
+                mv.overlays.add(
+                    Marker(mv).apply {
+                        position = point
+                        icon = mv.context.getDrawable(R.drawable.location)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        title = "Current Location"
+                    })
+
+                // ✅ CENTER ONLY ONCE
+                if (!hasCenteredInitially) {
+                    mv.controller.setZoom(19.0)
+                    mv.controller.animateTo(point)
+                    hasCenteredInitially = true
+                }
+            }
+
+            // Manual recenter via FAB
+            mapCenterTarget?.let {
+                mv.controller.animateTo(it)
+                mapCenterTarget = null
+            }
+
+            mv.invalidate()
+        })
+
+        // Bottom controls
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             FloatingActionButton(
                 modifier = Modifier
-                    .padding(vertical = 18.dp, horizontal = 10.dp)
+                    .padding(18.dp)
                     .weight(0.75f),
                 containerColor = if (viewModel.showStopText) Color.Red else Color.Gray,
                 onClick = {
-                    if (viewModel.showStopText) {
-                        showStopDialog = true
-                    }
-                }
-            ) {
+                    if (viewModel.showStopText) showStopDialog = true
+                }) {
                 Text(
                     text = if (viewModel.showStopText) "S  T  O  P" else "S T O P P E D",
                     fontSize = 18.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
                 )
             }
 
             FloatingActionButton(
                 modifier = Modifier
-                    .padding(vertical = 18.dp, horizontal = 10.dp)
-                    .weight(0.25f),
-                onClick = {}
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
+                    .padding(18.dp)
+                    .weight(0.25f), onClick = {}) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = currentSpeed.toInt().toString(),
                         fontSize = 18.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
                     )
-                    Text(
-                        text = "km/h",
-                        fontSize = 12.sp,
-                        color = Color.LightGray
-                    )
+                    Text("km/h", fontSize = 12.sp, color = Color.LightGray)
                 }
             }
         }
 
+        // Recenter FAB
         FloatingActionButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 12.dp, bottom = 82.dp),
+            shape = CircleShape,
             onClick = {
                 currentLocation?.let {
                     mapCenterTarget = GeoPoint(it.latitude, it.longitude)
                 }
-            },
-            shape = CircleShape,
-            modifier = Modifier
-                .padding(bottom = 82.dp, end = 12.dp)
-                .align(Alignment.BottomEnd)
-        ) {
+            }) {
             Icon(
-                painter = painterResource(R.drawable.location),
-                contentDescription = "Current Location"
+                painter = painterResource(R.drawable.location), contentDescription = "Recenter"
             )
         }
 
+        // Info card
         Card(
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.TopEnd)
                 .padding(16.dp)
-                .clickable(
-                    onClick = {
-                        navController.navigate(NavigationDestination.DETAILS_SCREEN.name)
-                    }
-                ),
-            colors = CardDefaults.cardColors(
+                .clickable {
+                    navController.navigate(NavigationDestination.DETAILS_SCREEN.name)
+                }, colors = CardDefaults.cardColors(
                 containerColor = Color.White.copy(alpha = 0.9f)
             )
         ) {
-            Column(
-                modifier = Modifier.padding(12.dp)
-            ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text("Vehicle: ${selectedVehicleType.name}", fontSize = 12.sp, color = Color.Gray)
                 Text(
-                    text = "Vehicle: ${selectedVehicleType.name}",
+                    "${currentLocation?.latitude}, ${currentLocation?.longitude}",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
-                Text(
-                    text = "${currentLocation?.latitude}, ${currentLocation?.longitude}",
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Events: ${detectedEvents.size}",
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
+                Text("Events: ${detectedEvents.size}", fontSize = 12.sp, color = Color.Gray)
             }
         }
     }

@@ -26,7 +26,7 @@ interface RoadHazardAPI {
         @Body request: NewHazardRequest
     ): NewHazardResponse
 
-    @GET("hazards")
+    @GET("hazards/all")
     suspend fun getAllHazards(
         @Header("Authorization") token: String
     ): Response<List<SingleHazardResponse>>
