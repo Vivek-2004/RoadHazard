@@ -47,20 +47,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val recentSpeedBreakers = mutableListOf<RoadEvent>()
     private var speedBreakerTimerJob: Job? = null
 
-
-    var testList = listOf(
-        RoadEvent(
-            type = EventType.POTHOLE,
-            latitude = 00.0000,
-            longitude = 00.0000,
-            timestamp = System.currentTimeMillis() - 600000,
-            confidence = 0.92f,
-            speed = 45.5f
-        )
-    )
-
     init {
-        detectedEvents.addAll(testList)
         locationManager = LocationManager(application) { location, speed ->
             currentLocation = location
             currentSpeed = speed
