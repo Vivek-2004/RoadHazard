@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.drive.roadhazard.data.PhoneOrientation
 import com.drive.roadhazard.data.VehicleType
 
-@Composable
+@Composable 
 fun VehicleCard(
     vehicleType: VehicleType,
     isSelected: Boolean,

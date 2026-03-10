@@ -1,6 +1,7 @@
 package com.drive.roadhazard.sensors
 
 import com.drive.roadhazard.data.EventType
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -17,6 +18,12 @@ class SensorProcessor {
     private val lowlimit = 5.0
     private val scaling = 5.0
     private val baselimit = 5.0
+
+    private val broken_patch_thres = 2.5
+
+    private var speedBreakerCount = 0
+
+    private var lastSpeedBreakerTime = 0L
     fun processNewSensorData(
         ax: Float,
         ay: Float,
@@ -72,15 +79,34 @@ class SensorProcessor {
 
         // 4. Detect Event (from RoADApp onSensorChanged, line 763)
         // Check if Z-axis acceleration exceeds thresholds, with a 2-second cooldown
-        if ((acc_final[2] > finb || acc_final[2] < finp) && (timestamp - prev3) > 2000) {
+        if ((acc_final[2] > finb) && (timestamp - prev3) > 500) {
+
             prev3 = timestamp
 
-            // RoADApp flags '1' for both. We'll differentiate them.
-            return if (acc_final[2] > finb) {
-                EventType.SPEED_BREAKER
+            if (timestamp - lastSpeedBreakerTime < 3000) {
+                speedBreakerCount++
             } else {
-                EventType.POTHOLE
+                speedBreakerCount = 1
             }
+
+            lastSpeedBreakerTime = timestamp
+
+            if (speedBreakerCount >= 2) {
+                speedBreakerCount = 0
+                return EventType.MULTIPLE_SPEED_BREAKERS
+            }
+
+            return EventType.SPEED_BREAKER
+        }
+
+        if ((acc_final[2] < finp) && (timestamp - prev3) > 500) {
+            prev3 = timestamp
+            return EventType.POTHOLE
+        }
+
+        if (abs(acc_final[2]) > broken_patch_thres && abs(acc_final[2]) < finb && (timestamp - prev3) > 500) {
+            prev3 = timestamp
+            return EventType.BROKEN_PATCH
         }
 
         // No event detected
