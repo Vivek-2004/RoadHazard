@@ -24,6 +24,8 @@ class SensorProcessor {
     private var speedBreakerCount = 0
 
     private var lastSpeedBreakerTime = 0L
+
+    private var lastPotholeTime = 0L
     fun processNewSensorData(
         ax: Float,
         ay: Float,
@@ -99,7 +101,8 @@ class SensorProcessor {
             return EventType.SPEED_BREAKER
         }
 
-        if ((acc_final[2] < finp) && (timestamp - prev3) > 500) {
+        if ((acc_final[2] < finp) && (timestamp - lastPotholeTime > 1500)) {
+            lastPotholeTime = timestamp
             prev3 = timestamp
             return EventType.POTHOLE
         }
