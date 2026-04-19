@@ -93,5 +93,4 @@ class MainActivity : ComponentActivity() {
             viewModel.onPermissionResult(true)
         }
     }
-
 }

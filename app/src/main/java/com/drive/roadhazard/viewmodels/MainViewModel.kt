@@ -218,13 +218,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun confirmEvent(confirm: Boolean) {
         pendingEvent?.let { event ->
-            if (confirm) {
-                val confirmedEvent = event.copy(confirmed = true)
-                synchronized(detectedEvents) {
-                    detectedEvents.add(confirmedEvent)
-                }
 
-                // Map Android EventType to API Strings
+            val updatedEvent = event.copy(confirmed = confirm)
+
+            synchronized(detectedEvents) {
+                detectedEvents.add(updatedEvent)
+            }
+
+            if (confirm) {
                 val apiType = when (event.type) {
                     EventType.POTHOLE -> "POTHOLE"
                     EventType.SPEED_BREAKER -> "SINGLE_SPEED_BUMP"
@@ -232,13 +233,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     EventType.BROKEN_PATCH -> "ROAD_PATCH"
                 }
 
-                // Send the report to the backend using the stored JWT
                 reportNewHazard(
                     latitude = event.latitude,
                     longitude = event.longitude,
                     type = apiType
                 )
             }
+
             pendingEvent = null
         }
     }
