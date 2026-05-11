@@ -42,5 +42,6 @@ data class SingleHazardResponse (
     val hazardId: String,
     val hazardType: String,
     val latitude: Double,
-    val longitude: Double
+    val longitude: Double,
+    val confidence: Float
 )

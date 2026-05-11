@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 class EventRepository {
     companion object {
         private const val TAG = "EventRepository"
-        private const val BASE_URL = "https://roadmap-x7c3.onrender.com"
+        private const val BASE_URL = "https://roadmap-ux8z.onrender.com/api/v2/"
     }
 
     private val httpClient by lazy {

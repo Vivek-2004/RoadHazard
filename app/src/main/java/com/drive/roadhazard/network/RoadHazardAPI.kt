@@ -20,13 +20,13 @@ interface RoadHazardAPI {
     @POST("auth/signin")
     suspend fun signIn(@Body request: LoginRequest): Response<LoginResponse>
 
-    @POST("hazards/new-report")
+    @POST("hazards") // Report a hazard
     suspend fun reportHazard(
         @Header("Authorization") token: String,
         @Body request: NewHazardRequest
     ): NewHazardResponse
 
-    @GET("hazards/all")
+    @GET("hazards") // Get all hazards
     suspend fun getAllHazards(
         @Header("Authorization") token: String
     ): Response<List<SingleHazardResponse>>
